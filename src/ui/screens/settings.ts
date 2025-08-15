@@ -22,6 +22,11 @@ export function Settings(root: HTMLElement) {
         <div class="text-xs opacity-70">Exports include activities & entries. Imports merge by id; duplicates are skipped.</div>
       </div>
 
+      <div class="p-4 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2">
+            <div class="text-sm opacity-90">Activities</div>
+            <a href="#activities" class="px-4 py-2 rounded-xl bg-amber text-ink font-medium inline-block">Manage Activities</a>
+        </div>
+
       <div class="p-4 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2 opacity-70">
         <div class="text-sm">Units & preferences (coming soon)</div>
       </div>

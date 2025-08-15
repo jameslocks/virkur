@@ -3,7 +3,8 @@ import { Today } from './screens/today'
 import { Add } from './screens/add'
 import { History } from './screens/history'
 import { Entry } from './screens/entry'
-import { Settings } from './screens/settings'  // NEW
+import { Settings } from './screens/settings'
+import { Activities } from './screens/activities'
 
 export function mountApp(root: HTMLElement) {
   root.innerHTML = `
@@ -29,13 +30,22 @@ export function mountApp(root: HTMLElement) {
 
   const render = () => {
     const route = parseRoute()
-    setActive((route.name === 'entry' || route.name === 'settings') ? 'today' : route.name as any)
+    // Keep bottom nav highlight on primary sections
+    const navFocus = route.name === 'entry' || route.name === 'settings' || route.name === 'activities' || route.name === 'activity'
+      ? 'today' : (route.name as any)
+    setActive(navFocus)
+
     screen.textContent = '…'
     if (route.name === 'today') Today(screen)
     else if (route.name === 'add') Add(screen)
     else if (route.name === 'history') History(screen)
-    else if (route.name === 'settings') Settings(screen)       // NEW
-    else Entry(screen, route.id)
+    else if (route.name === 'settings') Settings(screen)
+    else if (route.name === 'activities') Activities(screen, 'list')
+    else if (route.name === 'activity') {
+      if (route.id === 'new') Activities(screen, 'new')
+      else Activities(screen, 'edit', route.id)
+    }
+    else Entry(screen, (route as any).id)
   }
 
   onRouteChange(render)

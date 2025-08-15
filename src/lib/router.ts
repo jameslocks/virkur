@@ -3,17 +3,21 @@ export type Route =
   | { name: 'add' }
   | { name: 'history' }
   | { name: 'entry', id: string }
-  | { name: 'settings' }   // NEW
+  | { name: 'settings' }
+  | { name: 'activities' }
+  | { name: 'activity', id: string | 'new' }
 
 export const parseRoute = (): Route => {
   const h = (location.hash || '#today').slice(1)
-  if (h.startsWith('entry/')) {
-    const id = h.split('/')[1] ?? ''
-    return { name: 'entry', id }
-  }
+  if (h.startsWith('entry/')) return { name: 'entry', id: h.split('/')[1] ?? '' }
   if (h === 'add') return { name: 'add' }
   if (h === 'history') return { name: 'history' }
-  if (h === 'settings') return { name: 'settings' }  // NEW
+  if (h === 'settings') return { name: 'settings' }
+  if (h === 'activities') return { name: 'activities' }
+  if (h.startsWith('activity/')) {
+    const id = h.split('/')[1] ?? 'new'
+    return { name: 'activity', id: id as any }
+  }
   return { name: 'today' }
 }
 
