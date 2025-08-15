@@ -1,12 +1,48 @@
 @import "tailwindcss" source(".");
 
 @theme {
-  --color-ink:    #281D18;
-  --color-orange: #D45113;
-  --color-amber:  #F9A03F;
-  --color-butter: #F8DDA4;
-  --color-mint:   #E3FACC;
+  /* ----- Base aliases (map to 500) ----- */
+  --color-ink:    var(--color-ink-500);
+  --color-orange: var(--color-orange-500);
+  --color-amber:  var(--color-amber-500);
+  --color-butter: var(--color-butter-500);
+  --color-mint:   var(--color-mint-500);
+
+  /* ----- Ink (neutral ramp) ----- */
+  --color-ink-100: #DFDDDC;
+  --color-ink-300: #9E9997;
+  --color-ink-500: #281D18; /* your base */
+  --color-ink-700: #1E1612;
+  --color-ink-900: #140E0C;
+
+  /* ----- Orange ----- */
+  --color-orange-100: #F9E5DC;
+  --color-orange-300: #ECB195;
+  --color-orange-500: #D45113; /* your base */
+  --color-orange-700: #9F3D0E;
+  --color-orange-900: #6A280A;
+
+  /* ----- Amber ----- */
+  --color-amber-100: #FEF1E2;
+  --color-amber-300: #FCD4A9;
+  --color-amber-500: #F9A03F; /* your base */
+  --color-amber-700: #BB782F;
+  --color-amber-900: #7C5020;
+
+  /* ----- Butter (light yellow) ----- */
+  --color-butter-100: #FEFAF1;
+  --color-butter-300: #FCF0D6;
+  --color-butter-500: #F8DDA4; /* your base */
+  --color-butter-700: #BAA67B;
+  --color-butter-900: #7C6E52;
+
+  /* ----- Mint (light green) ----- */
+  --color-mint-100: #FBFEF7;
+  --color-mint-300: #F2FDE8;
+  --color-mint-500: #E3FACC; /* your base */
+  --color-mint-700: #AABC99;
+  --color-mint-900: #727D66;
 }
 
-/* optional: your base tweaks here */
+/* Global preference */
 :root { color-scheme: light dark; }
