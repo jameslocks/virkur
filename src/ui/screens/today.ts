@@ -41,10 +41,13 @@ function item(activities: Activity[], e: Entry) {
   const a = activities.find(x => x.id === e.activityId)
   const title = `${a?.icon ?? ''} ${a?.name ?? 'Activity'} • ${e.occurredAt}`
   return `<li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20">
-    <div class="font-medium">${title}</div>
-    <div class="text-sm opacity-90">${summarize(a, e)}</div>
+    <a href="#entry/${e.id}" class="block">
+      <div class="font-medium">${title}</div>
+      <div class="text-sm opacity-90">${summarize(a, e)}</div>
+    </a>
   </li>`
 }
+
 
 function summarize(a: Activity | undefined, e: Entry): string {
   const m = e.metrics as Record<string, unknown>
