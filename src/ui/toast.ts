@@ -2,17 +2,17 @@ export function showUndoToast(message: string, onUndo: () => void, duration = 50
   const bar = document.createElement('div')
   bar.setAttribute('role', 'status')
   bar.setAttribute('aria-live', 'polite')
-  // Positioned above bottom nav; centered; safe-area aware; high z-index
   bar.className = [
     'fixed left-1/2 -translate-x-1/2 bottom-24 z-[60]',
     'w-[calc(100%-2rem)] max-w-md',
-    'px-3 py-3 rounded-xl bg-amber text-ink shadow-lg',
-    'flex items-center justify-between gap-3',
+    // ↑ centered, above bottom nav; width respects side margins
+    'px-4 py-3 rounded-2xl bg-amber text-ink shadow-lg',
+    'flex items-center justify-between gap-4',
     'pb-[env(safe-area-inset-bottom)]'
   ].join(' ')
   bar.innerHTML = `
-    <span class="text-sm">${escapeHtml(message)}</span>
-    <button class="px-3 py-1 rounded bg-ink text-butter text-sm">Undo</button>
+    <span class="text-sm leading-5">${escapeHtml(message)}</span>
+    <button class="px-3 py-1.5 rounded-lg bg-ink text-butter text-sm">Undo</button>
   `
   const btn = bar.querySelector('button')!
   let undone = false
