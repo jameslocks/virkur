@@ -5,28 +5,31 @@ import { showUndoToast } from '../toast'
 
 export async function Entry(root: HTMLElement, id: string) {
   const entry = await db.entries.get(id) as Entry | undefined
-  if (!entry) {
-    root.innerHTML = `<div class="p-4 text-butter-300">Entry not found.</div>`
-    return
-  }
+  if (!entry) { root.innerHTML = `<div class="p-4 text-butter-300">Entry not found.</div>`; return }
   const activity = await db.activities.get(entry.activityId) as Activity | undefined
-  if (!activity) {
-    root.innerHTML = `<div class="p-4 text-butter-300">Activity not found.</div>`
-    return
-  }
+  if (!activity) { root.innerHTML = `<div class="p-4 text-butter-300">Activity not found.</div>`; return }
 
   root.innerHTML = `
     <form id="edit" class="space-y-4">
       <div class="flex items-center justify-between">
         <div class="font-medium text-butter-300">${activity.icon ?? ''} ${activity.name}</div>
-        <a href="#today" class="text-amber underline text-sm">Back</a>
+        <a href="#today"
+           class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900">
+          ← Back
+        </a>
       </div>
 
       <div id="fields" class="space-y-3"></div>
 
       <div class="flex gap-2">
-        <button type="submit" class="flex-1 py-3 rounded-xl bg-amber text-ink font-medium">Save</button>
-        <button type="button" id="deleteBtn" class="px-4 py-3 rounded-xl bg-orange-700 hover:bg-orange-900 text-white">Delete</button>
+        <button type="submit"
+                class="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-3 bg-amber text-ink font-medium">
+          Save
+        </button>
+        <button type="button" id="deleteBtn"
+                class="inline-flex items-center justify-center rounded-xl px-4 py-3 bg-orange-700 hover:bg-orange-900 text-white">
+          Delete
+        </button>
       </div>
     </form>
   `
