@@ -9,11 +9,11 @@
   --color-mint:   var(--color-mint-500);
 
   /* ----- Ink (neutral ramp) ----- */
-  --color-ink-100: #DFDDDC;
-  --color-ink-300: #9E9997;
-  --color-ink-500: #281D18; /* your base */
-  --color-ink-700: #1E1612;
-  --color-ink-900: #140E0C;
+  --color-ink-100: #E6E7EA;
+  --color-ink-300: #9EA3AC;
+  --color-ink-500: #16151A; /* new base */
+  --color-ink-700: #101216;
+  --color-ink-900: #0A0B0D;
 
   /* ----- Orange ----- */
   --color-orange-100: #F9E5DC;
