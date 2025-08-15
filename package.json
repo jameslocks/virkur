@@ -1,0 +1,22 @@
+{
+  "name": "virkur",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit"  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.12",
+    "tailwindcss": "^4.1.12",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.2",
+    "vite-plugin-pwa": "^1.0.2"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.0",
+    "dexie": "^4.0.11"
+  }
+}

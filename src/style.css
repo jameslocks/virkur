@@ -1,0 +1,12 @@
+@import "tailwindcss" source(".");
+
+@theme {
+  --color-ink:    #281D18;
+  --color-orange: #D45113;
+  --color-amber:  #F9A03F;
+  --color-butter: #F8DDA4;
+  --color-mint:   #E3FACC;
+}
+
+/* optional: your base tweaks here */
+:root { color-scheme: light dark; }
