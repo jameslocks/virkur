@@ -1,5 +1,6 @@
 import type { Activity, Entry } from '../types'
 import { fmtDuration, fmtPace, sumCsv } from './calc'
+import { deriveTotalReps } from './reps'
 
 export function summarizeEntry(a: Activity | undefined, e: Entry): string {
   const m = e.metrics as Record<string, unknown>
@@ -30,12 +31,12 @@ export function summarizeEntry(a: Activity | undefined, e: Entry): string {
   }
 
   // push-ups / sit-ups
-  const style = typeof m['style'] === 'string' ? String(m['style']) : ''
-  const sets = Number(m['sets'] ?? 0)
-  const total = Number(m['total_reps'] ?? 0) || sumCsv(String(m['reps_list'] ?? ''))
-  const bits = []
-  if (style) bits.push(style)
-  if (sets) bits.push(`${sets} set${sets === 1 ? '' : 's'}`)
-  if (total) bits.push(`${total} reps`)
-  return bits.join(' • ')
+    const style = typeof m['style'] === 'string' ? String(m['style']) : ''
+    const sets = Number(m['sets'] ?? 0)
+    const total = deriveTotalReps(m)
+    const bits = []
+    if (style) bits.push(style)
+    if (sets) bits.push(`${sets} set${sets === 1 ? '' : 's'}`)
+    if (total) bits.push(`${total} reps`)
+    return bits.join(' • ')
 }

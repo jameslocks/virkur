@@ -1,4 +1,5 @@
 import type { Activity, Entry } from "../types"
+import { deriveTotalReps } from './reps'
 
 const startOfISOWeek = (d: Date) => {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
@@ -40,11 +41,7 @@ function primaryValueFor(activity: Activity, e: Entry): number {
     return Number(m['duration'] ?? 0) / 60 // minutes
   }
   // push-ups/sit-ups reps
-  if (typeof m['total_reps'] === 'number') return m['total_reps'] as number
-  if (typeof m['reps_list'] === 'string') {
-    return (m['reps_list'] as string).split(',').reduce((a, s) => a + (+s.trim() || 0), 0)
-  }
-  return 0
+return deriveTotalReps(m as any)
 }
 
 export function weeklyTotals(

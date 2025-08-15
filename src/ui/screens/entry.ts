@@ -2,6 +2,7 @@ import { db } from '../../db'
 import type { Activity, Entry, FieldDef } from '../../types'
 import { parseDuration } from '../../lib/calc'
 import { showUndoToast } from '../toast'
+import { deriveTotalReps } from '../../lib/reps'
 
 export async function Entry(root: HTMLElement, id: string) {
   const entry = await db.entries.get(id) as Entry | undefined
@@ -61,6 +62,9 @@ export async function Entry(root: HTMLElement, id: string) {
     e.preventDefault()
     const fd = new FormData(form)
     const metrics: Record<string, string | number | boolean> = {}
+    if ('reps_list' in metrics) {
+        metrics['total_reps'] = deriveTotalReps(metrics)
+    }
     for (const f of activity.fields) {
       const raw = String(fd.get(f.key) ?? '').trim()
       switch (f.type) {

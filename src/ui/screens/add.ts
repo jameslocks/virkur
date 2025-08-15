@@ -3,6 +3,7 @@ import { nanoid } from '../../util/id'
 import { parseDuration, sumCsv } from '../../lib/calc'
 import { ensureSeed } from '../../seed'
 import type { Activity, FieldDef } from '../../types'
+import { deriveTotalReps } from '../../lib/reps'
 
 export async function Add(root: HTMLElement) {
   root.innerHTML = `<div class="p-4 text-butter/80">Loading activities…</div>`
@@ -69,12 +70,7 @@ export async function Add(root: HTMLElement) {
 
     // Derived: total_reps from reps_list or (single number × sets)
     if ('reps_list' in metrics) {
-      const raw = String(metrics['reps_list']).trim()
-      const sets = Number(metrics['sets'] ?? 0)
-      let total = 0
-      if (raw.includes(',')) total = sumCsv(raw)
-      else if (raw !== '' && Number.isFinite(Number(raw))) total = Number(raw) * (sets > 0 ? sets : 1)
-      metrics['total_reps'] = total
+    metrics['total_reps'] = deriveTotalReps(metrics)
     }
 
     const occurredAt = String(fd.get('occurredAt') ?? new Date().toISOString().slice(0,10))
