@@ -34,8 +34,10 @@ export async function History(root: HTMLElement) {
           ${entries.slice(-30).reverse().map(e => {
             const a = activities.find(x => x.id === e.activityId)!
             return `<li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20">
-              <div class="font-medium">${a.icon ?? ''} ${a.name} • ${e.occurredAt}</div>
-              <pre class="text-xs opacity-80">${escapeHtml(JSON.stringify(e.metrics))}</pre>
+              <a href="#entry/${e.id}" class="block">
+                <div class="font-medium">${a.icon ?? ''} ${a.name} • ${e.occurredAt}</div>
+                <pre class="text-xs opacity-80">${escapeHtml(JSON.stringify(e.metrics))}</pre>
+              </a>
             </li>`
           }).join('')}
         </ul>
@@ -50,7 +52,18 @@ export async function History(root: HTMLElement) {
   Chart.register(BarController, BarElement, LineController, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend)
   charts.forEach(c => c.destroy()); charts = []
 
-  // Weekly totals (stacked bars)
+  // Build a set of high-contrast colors from CSS variables
+  const vars = ['--color-amber-500','--color-orange-500','--color-mint-500','--color-butter-500','--color-ink-300']
+  const rgba = (hex: string, a = 0.7) => {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)?.slice(1)
+    if (!m) return `rgba(255,255,255,${a})`
+    const [r,g,b] = m.map(x => parseInt(x, 16))
+    return `rgba(${r},${g},${b},${a})`
+  }
+  const cssVar = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#ffffff'
+  const colorAt = (i: number) => cssVar(vars[i % vars.length])
+
+  // Weekly totals (stacked bars) — brighter fills + borders
   {
     const { labels, series } = weeklyTotals(activities, entries, 8)
     const ctx = (root.querySelector('#weeklyChart') as HTMLCanvasElement).getContext('2d')!
@@ -58,12 +71,25 @@ export async function History(root: HTMLElement) {
       type: 'bar',
       data: {
         labels,
-        datasets: series.map(s => ({ label: s.name, data: s.data, stack: 'totals' })),
+        datasets: series.map((s, i) => {
+          const base = colorAt(i)
+          return {
+            label: s.name,
+            data: s.data,
+            stack: 'totals',
+            backgroundColor: rgba(base, 0.75),
+            borderColor: rgba(base, 1),
+            borderWidth: 2,
+          }
+        }),
       },
       options: {
         responsive: true,
         plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
-        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+        scales: {
+          x: { stacked: true, grid: { color: 'rgba(255,255,255,0.06)' } },
+          y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' } }
+        }
       }
     }))
   }
@@ -88,8 +114,10 @@ export async function History(root: HTMLElement) {
                 const s = String(Math.round(secs % 60)).padStart(2, '0')
                 return `${m}:${s}/km`
               }
-            }
-          }
+            },
+            grid: { color: 'rgba(255,255,255,0.06)' }
+          },
+          x: { grid: { color: 'rgba(255,255,255,0.06)' } }
         }
       }
     }))
