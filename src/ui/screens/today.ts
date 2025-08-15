@@ -1,5 +1,6 @@
 import { db } from '../../db'
 import type { Activity, Entry } from '../../types'
+import { summarizeEntry } from '../../lib/summary'
 import { fmtDuration, fmtPace, sumCsv } from '../../lib/calc'
 
 const todayISO = () => new Date().toISOString().slice(0, 10)
@@ -43,11 +44,10 @@ function item(activities: Activity[], e: Entry) {
   return `<li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20">
     <a href="#entry/${e.id}" class="block">
       <div class="font-medium">${title}</div>
-      <div class="text-sm opacity-90">${summarize(a, e)}</div>
+      <div class="text-sm opacity-90">${summarizeEntry(a, e)}</div>
     </a>
   </li>`
 }
-
 
 function summarize(a: Activity | undefined, e: Entry): string {
   const m = e.metrics as Record<string, unknown>

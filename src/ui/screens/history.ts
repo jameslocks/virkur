@@ -1,4 +1,5 @@
 import { db } from '../../db'
+import { summarizeEntry } from '../../lib/summary'
 import type { Activity, Entry } from '../../types'
 import { weeklyTotals, runPaceSeries, consecutiveActiveDays } from '../../lib/stats'
 
@@ -36,7 +37,7 @@ export async function History(root: HTMLElement) {
             return `<li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20">
               <a href="#entry/${e.id}" class="block">
                 <div class="font-medium">${a.icon ?? ''} ${a.name} • ${e.occurredAt}</div>
-                <pre class="text-xs opacity-80">${escapeHtml(JSON.stringify(e.metrics))}</pre>
+                <div class="text-sm opacity-90">${escapeHtml(summarizeEntry(a, e))}</div>
               </a>
             </li>`
           }).join('')}
