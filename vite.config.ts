@@ -15,7 +15,7 @@ export default defineConfig({
         short_name: 'Virkur',
         start_url: '/',
         display: 'standalone',
-        background_color: '#281D18',
+        background_color: '#16151A',
         theme_color: '#D45113',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
