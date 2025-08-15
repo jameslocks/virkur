@@ -108,9 +108,13 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
 
           <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-3">
             <div class="flex items-center justify-between">
-              <div class="font-medium">Fields</div>
-              <button type="button" id="addField" class="px-3 py-1.5 rounded bg-amber text-ink text-sm">Add field</button>
+            <div class="font-medium">Fields</div>
+            <div class="flex gap-2">
+                <button type="button" id="addRepsPreset" class="px-3 py-1.5 rounded bg-mint-500 text-ink text-sm">Add Sets + Reps</button>
+                <button type="button" id="addField" class="px-3 py-1.5 rounded bg-amber text-ink text-sm">Add field</button>
             </div>
+            </div>
+
 
             <ul id="fields" class="space-y-2">
               ${draft.fields.map((f, i) => fieldRow(f, i, draft.fields.length)).join('')}
@@ -119,6 +123,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
             <div class="text-xs opacity-70">
               Keys must be unique and match <code>/^[a-z][a-z0-9_]*$/</code>.
               Use <b>enum</b> for fixed choices, <b>duration</b> for mm:ss inputs.
+            <b>Tip:</b> Use the “Add Sets + Reps” preset for automatic totals.
             </div>
           </div>
 
@@ -180,6 +185,25 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
     root.querySelector<HTMLButtonElement>('#addField')!.addEventListener('click', () => {
       draft.fields.push({ key: '', label: '', type: 'text' })
       render()
+    })
+
+    // Add reps preset (inserts canonical keys if missing)
+    root.querySelector<HTMLButtonElement>('#addRepsPreset')!.addEventListener('click', () => {
+    // sync current top-level form before mutating (just in case)
+    draft.name = (form.elements.namedItem('name') as HTMLInputElement).value
+    draft.icon = (form.elements.namedItem('icon') as HTMLInputElement).value
+    draft.color = (form.elements.namedItem('color') as HTMLSelectElement).value
+    draft.archived = ((form.elements.namedItem('archived') as HTMLInputElement).checked)
+
+    const hasSets = draft.fields.some(f => f.key === 'sets')
+    const hasReps = draft.fields.some(f => f.key === 'reps_list')
+    if (hasSets && hasReps) return render('This activity already has sets + reps fields.')
+
+    const next = [...draft.fields]
+    if (!hasSets) next.push({ key: 'sets', label: 'Sets', type: 'number', required: true })
+    if (!hasReps) next.push({ key: 'reps_list', label: 'Reps per set', type: 'text', required: true })
+    draft.fields = next
+    render()
     })
 
     // Field row actions
