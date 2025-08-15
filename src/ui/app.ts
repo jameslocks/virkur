@@ -3,6 +3,7 @@ import { currentRoute, onRouteChange } from '../lib/router'
 import { Today } from './screens/today'
 import { Add } from './screens/add'
 import { History } from './screens/history'
+import { ensureSeed } from '../seed'
 
 export function mountApp(root: HTMLElement) {
   root.innerHTML = `
@@ -26,10 +27,11 @@ export function mountApp(root: HTMLElement) {
 
   const screen = root.querySelector<HTMLDivElement>('#screen')!
 
-  const render = () => {
+  const render = async () => {
     const route = currentRoute()
     setActive(route)
     screen.textContent = '…'
+    await ensureSeed()
     if (route === 'today') Today(screen)
     else if (route === 'add') Add(screen)
     else History(screen)
