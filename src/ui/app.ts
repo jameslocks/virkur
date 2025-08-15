@@ -2,14 +2,18 @@ import { parseRoute, onRouteChange } from '../lib/router'
 import { Today } from './screens/today'
 import { Add } from './screens/add'
 import { History } from './screens/history'
-import { Entry } from './screens/entry'  // NEW
+import { Entry } from './screens/entry'
+import { Settings } from './screens/settings'  // NEW
 
 export function mountApp(root: HTMLElement) {
   root.innerHTML = `
     <div class="min-h-dvh bg-ink text-white max-w-md mx-auto">
       <header class="p-4 pb-2 flex items-center justify-between">
         <h1 class="text-xl font-semibold text-butter tracking-wide"><a href="#today">Virkur</a></h1>
-        <a href="#add" class="px-3 py-2 rounded-lg bg-amber text-ink font-medium">Add</a>
+        <div class="flex items-center gap-2">
+          <a href="#add" class="px-3 py-2 rounded-lg bg-amber text-ink font-medium">Add</a>
+          <a href="#settings" class="px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900" title="Settings">⚙️</a>
+        </div>
       </header>
       <main id="screen" class="p-4 pt-2">…</main>
       <nav class="sticky bottom-0 bg-ink/90 backdrop-blur border-t border-butter-300/10">
@@ -25,11 +29,12 @@ export function mountApp(root: HTMLElement) {
 
   const render = () => {
     const route = parseRoute()
-    setActive(route.name as any)
+    setActive((route.name === 'entry' || route.name === 'settings') ? 'today' : route.name as any)
     screen.textContent = '…'
     if (route.name === 'today') Today(screen)
     else if (route.name === 'add') Add(screen)
     else if (route.name === 'history') History(screen)
+    else if (route.name === 'settings') Settings(screen)       // NEW
     else Entry(screen, route.id)
   }
 

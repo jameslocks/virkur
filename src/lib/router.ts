@@ -3,6 +3,7 @@ export type Route =
   | { name: 'add' }
   | { name: 'history' }
   | { name: 'entry', id: string }
+  | { name: 'settings' }   // NEW
 
 export const parseRoute = (): Route => {
   const h = (location.hash || '#today').slice(1)
@@ -12,6 +13,7 @@ export const parseRoute = (): Route => {
   }
   if (h === 'add') return { name: 'add' }
   if (h === 'history') return { name: 'history' }
+  if (h === 'settings') return { name: 'settings' }  // NEW
   return { name: 'today' }
 }
 
