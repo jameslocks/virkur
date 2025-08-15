@@ -141,8 +141,22 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       </section>
     `
 
-    // Handlers
+    // Top-level input bindings so draft stays in sync between re-renders
     const form = root.querySelector<HTMLFormElement>('#f')!
+
+    const nameEl = form.querySelector<HTMLInputElement>('input[name="name"]')!
+    nameEl.addEventListener('input', () => { draft.name = nameEl.value })
+
+    const iconEl = form.querySelector<HTMLInputElement>('input[name="icon"]')!
+    iconEl.addEventListener('input', () => { draft.icon = iconEl.value })
+
+    const colorEl = form.querySelector<HTMLSelectElement>('select[name="color"]')!
+    colorEl.addEventListener('change', () => { draft.color = colorEl.value })
+
+    const archEl = form.querySelector<HTMLInputElement>('input[name="archived"]')!
+    archEl.addEventListener('change', () => { draft.archived = archEl.checked })
+
+    // Handlers
     const fieldsUL = root.querySelector<HTMLUListElement>('#fields')!
 
     form.addEventListener('submit', async (e) => {
