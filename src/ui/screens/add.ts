@@ -9,7 +9,7 @@ export async function Add(root: HTMLElement) {
   root.innerHTML = `<div class="p-4 text-butter/80">Loading activities…</div>`
 
   await ensureSeed()
-  let activities: Activity[] = await db.activities.toArray()
+  const activities = (await db.activities.toArray()).filter(a => !a.archived)
   if (activities.length === 0) {
     root.innerHTML = `<div class="p-4 text-butter/80">No activities available. Reload the app.</div>`
     return
@@ -70,7 +70,7 @@ export async function Add(root: HTMLElement) {
 
     // Derived: total_reps from reps_list or (single number × sets)
     if ('reps_list' in metrics) {
-    metrics['total_reps'] = deriveTotalReps(metrics)
+        metrics['total_reps'] = deriveTotalReps(metrics)
     }
 
     const occurredAt = String(fd.get('occurredAt') ?? new Date().toISOString().slice(0,10))
