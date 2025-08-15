@@ -34,14 +34,16 @@ export function consecutiveActiveDays(entries: Entry[]): number {
 function primaryValueFor(activity: Activity, e: Entry): number {
   const m = e.metrics as Record<string, unknown>
   const name = activity.name.toLowerCase()
+
   if (name.includes('run') || name.includes('walk')) {
-    return Number(m['distance_km'] ?? 0) // km
+    return Number(m['distance_km'] ?? 0)
   }
   if (name.includes('plank')) {
-    return Number(m['duration'] ?? 0) / 60 // minutes
+    return Number(m['duration'] ?? 0) / 60
   }
-  // push-ups/sit-ups reps
-return deriveTotalReps(m as any)
+  // Default: if reps are present, use derived total; otherwise 0
+  const reps = deriveTotalReps(m)
+  return Number.isFinite(reps) && reps > 0 ? reps : 0
 }
 
 export function weeklyTotals(

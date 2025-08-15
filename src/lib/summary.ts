@@ -30,7 +30,7 @@ export function summarizeEntry(a: Activity | undefined, e: Entry): string {
     return sec ? fmtDuration(sec) : ''
   }
 
-  // push-ups / sit-ups
+    if ('reps_list' in m || 'total_reps' in m) {
     const style = typeof m['style'] === 'string' ? String(m['style']) : ''
     const sets = Number(m['sets'] ?? 0)
     const total = deriveTotalReps(m)
@@ -39,4 +39,4 @@ export function summarizeEntry(a: Activity | undefined, e: Entry): string {
     if (sets) bits.push(`${sets} set${sets === 1 ? '' : 's'}`)
     if (total) bits.push(`${total} reps`)
     return bits.join(' • ')
-}
+    }
