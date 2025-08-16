@@ -1,5 +1,5 @@
 import { db } from '../../db'
-import type { Activity, FieldDef } from '../../types'
+import type { Activity, FieldDef, Preset } from '../../types'
 import { nanoid } from '../../util/id'
 import { showUndoToast } from '../toast'
 
@@ -15,20 +15,20 @@ export async function Activities(root: HTMLElement, mode: Mode = 'list', id?: st
       color: '#D45113',
       archived: false,
       fields: [],
+      presets: [], // NEW
     }
     return editorView(root, draft, true)
   }
-  // edit existing
   const act = await db.activities.get(id!)
   if (!act) {
     root.innerHTML = `<div class="p-4 text-butter-300">Activity not found.</div>`
     return
   }
+  if (!Array.isArray(act.presets)) act.presets = []
   return editorView(root, act, false)
 }
 
 /* ---------------- List View ---------------- */
-
 async function listView(root: HTMLElement) {
   const acts = await db.activities.orderBy('name').toArray()
 
@@ -48,7 +48,11 @@ async function listView(root: HTMLElement) {
               <li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 flex items-center justify-between gap-3">
                 <div class="min-w-0">
                   <div class="font-medium truncate">${a.icon ?? ''} ${a.name}</div>
-                  <div class="text-xs opacity-80">${a.fields.length} field${a.fields.length===1?'':'s'}${a.archived ? ' • archived' : ''}</div>
+                  <div class="text-xs opacity-80">
+                    ${a.fields.length} field${a.fields.length===1?'':'s'}
+                    • ${a.presets?.length ?? 0} preset${(a.presets?.length ?? 0)===1?'':'s'}
+                    ${a.archived ? ' • archived' : ''}
+                  </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   <a href="#activity/${a.id}" class="px-3 py-1.5 rounded bg-ink-900 border border-butter-300/20 text-butter-300 text-sm">Edit</a>
@@ -65,7 +69,6 @@ async function listView(root: HTMLElement) {
     </section>
   `
 
-  // Archive / Unarchive handlers
   root.querySelectorAll<HTMLButtonElement>('[data-archive]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-archive')!
@@ -83,10 +86,9 @@ async function listView(root: HTMLElement) {
 }
 
 /* ---------------- Editor View ---------------- */
-
 function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
-  // mutable draft during editing
   let draft: Activity = JSON.parse(JSON.stringify(initial))
+  if (!Array.isArray(draft.presets)) draft.presets = []
 
   const render = async (err = '') => {
     const entryCount = isNew ? 0 : await db.entries.where('activityId').equals(draft.id).count()
@@ -123,6 +125,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
             </select>
           </label>
 
+          <!-- Fields card -->
           <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-3">
             <div class="flex items-center justify-between">
               <div class="font-medium">Fields</div>
@@ -140,6 +143,30 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
               Keys must be unique and match <code>/^[a-z][a-z0-9_]*$/</code>.
               Use <b>enum</b> for fixed choices, <b>duration</b> for mm:ss inputs.
               <b>Tip:</b> Use “Add Sets + Reps” for automatic totals (fields: <code>sets</code>, <code>reps_list</code>).
+            </div>
+          </div>
+
+          <!-- Presets card -->
+          <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="font-medium">Presets</div>
+              <div class="flex gap-2">
+                <button type="button" id="addPreset" class="px-3 py-1.5 rounded bg-amber text-ink text-sm">Add preset</button>
+              </div>
+            </div>
+
+            ${draft.presets.length === 0
+              ? `<div class="text-sm opacity-80">No presets yet. Add one and set <i>metrics</i> JSON using your field keys.</div>`
+              : `<ul id="presets" class="space-y-2">
+                  ${draft.presets.map((p, i) => presetRow(p, i, draft)).join('')}
+                 </ul>`
+            }
+
+            <div class="text-xs opacity-70">
+              <b>Metrics JSON</b> example for Sets+Reps:
+              <code>{"sets":3,"reps_list":"10"}</code> or
+              <code>{"sets":3,"reps_list":"10,10,10"}</code>.
+              Duration can be seconds (number) or text <code>"mm:ss"</code>.
             </div>
           </div>
 
@@ -161,25 +188,20 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       </section>
     `
 
-    // ---------- Top-level bindings (prevent resets) ----------
+    // ----- Top-level bindings -----
     const form = root.querySelector<HTMLFormElement>('#f')!
-
     const nameEl = form.querySelector<HTMLInputElement>('input[name="name"]')!
     nameEl.addEventListener('input', () => { draft.name = nameEl.value })
-
     const iconEl = form.querySelector<HTMLInputElement>('input[name="icon"]')!
     iconEl.addEventListener('input', () => { draft.icon = iconEl.value })
-
     const colorEl = form.querySelector<HTMLSelectElement>('select[name="color"]')!
     colorEl.addEventListener('change', () => { draft.color = colorEl.value })
-
     const archEl = form.querySelector<HTMLInputElement>('input[name="archived"]')!
     archEl.addEventListener('change', () => { draft.archived = archEl.checked })
 
-    // ---------- Save ----------
+    // ----- Save -----
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
-      // sync before validate/save (covers any unsynced values)
       draft.name = (form.elements.namedItem('name') as HTMLInputElement).value.trim()
       draft.icon = (form.elements.namedItem('icon') as HTMLInputElement).value
       draft.color = (form.elements.namedItem('color') as HTMLSelectElement).value
@@ -188,21 +210,20 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       const errMsg = validateActivity(draft)
       if (errMsg) return render(errMsg)
 
-        if (isNew) await db.activities.add(draft)
-        else await db.activities.put(draft)
+      if (isNew) await db.activities.add(draft)
+      else await db.activities.put(draft)
 
       location.hash = '#activities'
     })
 
-    // ---------- Add field ----------
+    // ----- Add field -----
     root.querySelector<HTMLButtonElement>('#addField')!.addEventListener('click', () => {
       draft.fields.push({ key: '', label: '', type: 'text' })
       render()
     })
 
-    // ---------- Add Sets + Reps preset ----------
+    // ----- Add Sets + Reps preset (fields) -----
     root.querySelector<HTMLButtonElement>('#addRepsPreset')!.addEventListener('click', () => {
-      // ensure top-level synced
       draft.name = (form.elements.namedItem('name') as HTMLInputElement).value
       draft.icon = (form.elements.namedItem('icon') as HTMLInputElement).value
       draft.color = (form.elements.namedItem('color') as HTMLSelectElement).value
@@ -219,7 +240,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       render()
     })
 
-    // ---------- Field rows: move/remove ----------
+    // ----- Field rows: move/remove -----
     const fieldsUL = root.querySelector<HTMLUListElement>('#fields')!
     fieldsUL.querySelectorAll('[data-move-up]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -243,25 +264,63 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       })
     })
 
-    // ---------- Field inputs: two-way binding ----------
-    fieldsUL.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[data-idx]').forEach(el => {
-      el.addEventListener('input', () => {
-        const i = Number(el.getAttribute('data-idx'))
-        const name = el.getAttribute('name')!
-        const f = draft.fields[i]
-        if (name === 'key') f.key = (el as HTMLInputElement).value.trim()
-        else if (name === 'label') f.label = (el as HTMLInputElement).value
-        else if (name === 'type') f.type = (el as HTMLSelectElement).value as FieldDef['type']
-        else if (name === 'options') f.options = (el as HTMLTextAreaElement).value.split('\n').map(s => s.trim()).filter(Boolean)
-        else if (name === 'required') f.required = (el as HTMLInputElement).checked
+    // ----- Presets: add -----
+    const addPresetBtn = root.querySelector<HTMLButtonElement>('#addPreset')!
+    if (addPresetBtn) {
+      addPresetBtn.addEventListener('click', () => {
+        draft.presets!.push({ id: nanoid(), name: 'New preset', metrics: {} })
+        render()
       })
-    })
+    }
 
-    // ---------- Delete (no entries) with Undo ----------
+    // ----- Preset rows handlers -----
+    const presUL = root.querySelector<HTMLUListElement>('#presets')
+    if (presUL) {
+      presUL.querySelectorAll('[data-preset-move-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number((btn as HTMLElement).getAttribute('data-preset-move-up'))
+          if (i > 0) [draft.presets![i-1], draft.presets![i]] = [draft.presets![i], draft.presets![i-1]]
+          render()
+        })
+      })
+      presUL.querySelectorAll('[data-preset-move-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number((btn as HTMLElement).getAttribute('data-preset-move-down'))
+          if (i < draft.presets!.length - 1) [draft.presets![i+1], draft.presets![i]] = [draft.presets![i], draft.presets![i+1]]
+          render()
+        })
+      })
+      presUL.querySelectorAll('[data-preset-remove]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number((btn as HTMLElement).getAttribute('data-preset-remove'))
+          draft.presets!.splice(i, 1)
+          render()
+        })
+      })
+      // inputs
+      presUL.querySelectorAll<HTMLInputElement>('[data-preset-name]').forEach(input => {
+        input.addEventListener('input', () => {
+          const i = Number(input.getAttribute('data-preset-name'))
+          draft.presets![i].name = input.value
+        })
+      })
+      presUL.querySelectorAll<HTMLTextAreaElement>('[data-preset-metrics]').forEach(ta => {
+        ta.addEventListener('input', () => {
+          const i = Number(ta.getAttribute('data-preset-metrics'))
+          try {
+            const obj = JSON.parse(ta.value || '{}')
+            if (obj && typeof obj === 'object') draft.presets![i].metrics = obj as Preset['metrics']
+          } catch {
+            // ignore while typing; validation happens on save
+          }
+        })
+      })
+    }
+
+    // ----- Delete (no entries) with Undo -----
     const delBtn = root.querySelector<HTMLButtonElement>('#deleteBtn')
     if (delBtn) {
       delBtn.addEventListener('click', async () => {
-        // double-check no entries exist
         const count = await db.entries.where('activityId').equals(draft.id).count()
         if (count > 0) {
           alert(`This activity has ${count} entr${count === 1 ? 'y' : 'ies'}. Archive it instead.`)
@@ -274,7 +333,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
         await db.activities.delete(draft.id)
 
         showUndoToast('Activity deleted', async () => {
-          await db.activities.add(snapshot) // restore with same id
+          await db.activities.add(snapshot)
           location.hash = `#activity/${snapshot.id}`
         })
 
@@ -287,7 +346,6 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
 }
 
 /* ---------------- Helpers ---------------- */
-
 function validateActivity(a: Activity): string {
   if (!a.name.trim()) return 'Name is required.'
   const seen = new Set<string>()
@@ -296,8 +354,12 @@ function validateActivity(a: Activity): string {
     if (seen.has(f.key)) return `Duplicate key: ${f.key}`
     seen.add(f.key)
   }
-  // reserved
   if (seen.has('occurredAt')) return 'Key "occurredAt" is reserved.'
+  // Validate preset metrics are objects
+  for (const p of a.presets ?? []) {
+    if (!p.name.trim()) return 'Preset name is required.'
+    if (!p.metrics || typeof p.metrics !== 'object') return `Preset "${p.name}": metrics must be an object`
+  }
   return ''
 }
 
@@ -342,6 +404,28 @@ function fieldRow(f: FieldDef, i: number, len: number) {
         </div>
         <button type="button" data-remove="${i}" class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Remove</button>
       </div>
+    </li>
+  `
+}
+
+function presetRow(p: Preset, i: number, a: Activity) {
+  const schemaKeys = a.fields.map(f => f.key)
+  const placeholder = '{\n' + schemaKeys.map(k => `  "${k}": ""`).join(',\n') + '\n}'
+  const metricsText = JSON.stringify(p.metrics ?? {}, null, 2)
+  return `
+    <li class="p-3 rounded bg-ink-900 border border-butter-300/20 space-y-2">
+      <div class="flex items-center justify-between gap-3">
+        <input data-preset-name="${i}" value="${escapeAttr(p.name)}" class="flex-1 p-2 rounded bg-ink-700 border border-butter-300/20" />
+        <div class="flex gap-2">
+          <button type="button" data-preset-move-up="${i}" class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm" ${i===0?'disabled':''}>↑</button>
+          <button type="button" data-preset-move-down="${i}" class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm" ${i===a.presets!.length-1?'disabled':''}>↓</button>
+          <button type="button" data-preset-remove="${i}" class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Remove</button>
+        </div>
+      </div>
+      <label class="block">
+        <span class="block mb-1 text-sm opacity-90">Metrics (JSON)</span>
+        <textarea data-preset-metrics="${i}" rows="5" class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" placeholder='${escapeAttr(placeholder)}'>${escapeAttr(metricsText)}</textarea>
+      </label>
     </li>
   `
 }
