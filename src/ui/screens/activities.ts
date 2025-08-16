@@ -188,8 +188,8 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       const errMsg = validateActivity(draft)
       if (errMsg) return render(errMsg)
 
-      if (isNew) await db.activities.add(draft)
-      else await db.activities.update(draft.id, draft)
+        if (isNew) await db.activities.add(draft)
+        else await db.activities.put(draft)
 
       location.hash = '#activities'
     })
