@@ -8,18 +8,30 @@ export class VirkurDB extends Dexie {
 
   constructor() {
     super('virkur')
+
+    // v1: initial
     this.version(1).stores({
       activities: 'id,name,archived',
       entries: 'id,activityId,occurredAt',
     })
 
-    // v2: ensure archived defaults to false on existing rows
+    // v2: ensure archived defaults to false
     this.version(2).stores({
       activities: 'id,name,archived',
       entries: 'id,activityId,occurredAt',
     }).upgrade(tx =>
       tx.table('activities').toCollection().modify((obj: any) => {
         if (typeof obj.archived !== 'boolean') obj.archived = false
+      })
+    )
+
+    // v3: ensure presets exists as []
+    this.version(3).stores({
+      activities: 'id,name,archived',
+      entries: 'id,activityId,occurredAt',
+    }).upgrade(tx =>
+      tx.table('activities').toCollection().modify((obj: any) => {
+        if (!Array.isArray(obj.presets)) obj.presets = []
       })
     )
   }
