@@ -15,7 +15,7 @@ export async function Activities(root: HTMLElement, mode: Mode = 'list', id?: st
       color: '#D45113',
       archived: false,
       fields: [],
-      presets: [], // NEW
+      presets: [],
     }
     return editorView(root, draft, true)
   }
@@ -29,6 +29,7 @@ export async function Activities(root: HTMLElement, mode: Mode = 'list', id?: st
 }
 
 /* ---------------- List View ---------------- */
+
 async function listView(root: HTMLElement) {
   const acts = await db.activities.orderBy('name').toArray()
 
@@ -86,6 +87,7 @@ async function listView(root: HTMLElement) {
 }
 
 /* ---------------- Editor View ---------------- */
+
 function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
   let draft: Activity = JSON.parse(JSON.stringify(initial))
   if (!Array.isArray(draft.presets)) draft.presets = []
@@ -156,18 +158,11 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
             </div>
 
             ${draft.presets.length === 0
-              ? `<div class="text-sm opacity-80">No presets yet. Add one and set <i>metrics</i> JSON using your field keys.</div>`
+              ? `<div class="text-sm opacity-80">No presets yet. Add one, then fill only the values you want to prefill.</div>`
               : `<ul id="presets" class="space-y-2">
                   ${draft.presets.map((p, i) => presetRow(p, i, draft)).join('')}
                  </ul>`
             }
-
-            <div class="text-xs opacity-70">
-              <b>Metrics JSON</b> example for Sets+Reps:
-              <code>{"sets":3,"reps_list":"10"}</code> or
-              <code>{"sets":3,"reps_list":"10,10,10"}</code>.
-              Duration can be seconds (number) or text <code>"mm:ss"</code>.
-            </div>
           </div>
 
           <div class="flex items-center justify-between">
@@ -188,7 +183,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       </section>
     `
 
-    // ----- Top-level bindings -----
+    // ---------- top-level bindings ----------
     const form = root.querySelector<HTMLFormElement>('#f')!
     const nameEl = form.querySelector<HTMLInputElement>('input[name="name"]')!
     nameEl.addEventListener('input', () => { draft.name = nameEl.value })
@@ -199,7 +194,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
     const archEl = form.querySelector<HTMLInputElement>('input[name="archived"]')!
     archEl.addEventListener('change', () => { draft.archived = archEl.checked })
 
-    // ----- Save -----
+    // ---------- save ----------
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
       draft.name = (form.elements.namedItem('name') as HTMLInputElement).value.trim()
@@ -216,23 +211,17 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       location.hash = '#activities'
     })
 
-    // ----- Add field -----
+    // ---------- add field ----------
     root.querySelector<HTMLButtonElement>('#addField')!.addEventListener('click', () => {
       draft.fields.push({ key: '', label: '', type: 'text' })
       render()
     })
 
-    // ----- Add Sets + Reps preset (fields) -----
+    // ---------- add Sets + Reps field preset ----------
     root.querySelector<HTMLButtonElement>('#addRepsPreset')!.addEventListener('click', () => {
-      draft.name = (form.elements.namedItem('name') as HTMLInputElement).value
-      draft.icon = (form.elements.namedItem('icon') as HTMLInputElement).value
-      draft.color = (form.elements.namedItem('color') as HTMLSelectElement).value
-      draft.archived = (form.elements.namedItem('archived') as HTMLInputElement).checked
-
       const hasSets = draft.fields.some(f => f.key === 'sets')
       const hasReps = draft.fields.some(f => f.key === 'reps_list')
       if (hasSets && hasReps) return render('This activity already has sets + reps fields.')
-
       const next = [...draft.fields]
       if (!hasSets) next.push({ key: 'sets', label: 'Sets', type: 'number', required: true })
       if (!hasReps) next.push({ key: 'reps_list', label: 'Reps per set', type: 'text', required: true })
@@ -240,7 +229,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       render()
     })
 
-    // ----- Field rows: move/remove -----
+    // ---------- field rows: move/remove ----------
     const fieldsUL = root.querySelector<HTMLUListElement>('#fields')!
     fieldsUL.querySelectorAll('[data-move-up]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -264,8 +253,8 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       })
     })
 
-    // ----- Presets: add -----
-    const addPresetBtn = root.querySelector<HTMLButtonElement>('#addPreset')!
+    // ---------- presets: add ----------
+    const addPresetBtn = root.querySelector<HTMLButtonElement>('#addPreset')
     if (addPresetBtn) {
       addPresetBtn.addEventListener('click', () => {
         draft.presets!.push({ id: nanoid(), name: 'New preset', metrics: {} })
@@ -273,9 +262,10 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       })
     }
 
-    // ----- Preset rows handlers -----
+    // ---------- preset row handlers ----------
     const presUL = root.querySelector<HTMLUListElement>('#presets')
     if (presUL) {
+      // move/remove preset rows
       presUL.querySelectorAll('[data-preset-move-up]').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = Number((btn as HTMLElement).getAttribute('data-preset-move-up'))
@@ -297,27 +287,51 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
           render()
         })
       })
-      // inputs
+
+      // name inputs
       presUL.querySelectorAll<HTMLInputElement>('[data-preset-name]').forEach(input => {
         input.addEventListener('input', () => {
           const i = Number(input.getAttribute('data-preset-name'))
           draft.presets![i].name = input.value
         })
       })
-      presUL.querySelectorAll<HTMLTextAreaElement>('[data-preset-metrics]').forEach(ta => {
-        ta.addEventListener('input', () => {
-          const i = Number(ta.getAttribute('data-preset-metrics'))
-          try {
-            const obj = JSON.parse(ta.value || '{}')
-            if (obj && typeof obj === 'object') draft.presets![i].metrics = obj as Preset['metrics']
-          } catch {
-            // ignore while typing; validation happens on save
-          }
-        })
+
+      // metrics field inputs (all types)
+      presUL.querySelectorAll<HTMLElement>('[data-pf]').forEach(el => {
+        const i = Number(el.getAttribute('data-idx'))
+        const key = el.getAttribute('data-key')!
+        const type = el.getAttribute('data-type') as FieldDef['type']
+
+        if (type === 'bool') {
+          (el as HTMLInputElement).addEventListener('change', () => {
+            if ((el as HTMLInputElement).checked) draft.presets![i].metrics[key] = true
+            else delete draft.presets![i].metrics[key]
+          })
+        } else {
+          (el as HTMLInputElement | HTMLSelectElement).addEventListener('input', () => {
+            const raw = (el as HTMLInputElement).value.trim()
+            if (raw === '') { delete draft.presets![i].metrics[key]; return }
+            switch (type) {
+              case 'number': {
+                const n = Number(raw)
+                if (Number.isFinite(n)) draft.presets![i].metrics[key] = n
+                else delete draft.presets![i].metrics[key]
+                break
+              }
+              case 'enum':
+              case 'text':
+              case 'date':
+              case 'duration':
+              default:
+                draft.presets![i].metrics[key] = raw
+                break
+            }
+          })
+        }
       })
     }
 
-    // ----- Delete (no entries) with Undo -----
+    // ---------- delete (no entries) with undo ----------
     const delBtn = root.querySelector<HTMLButtonElement>('#deleteBtn')
     if (delBtn) {
       delBtn.addEventListener('click', async () => {
@@ -346,6 +360,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
 }
 
 /* ---------------- Helpers ---------------- */
+
 function validateActivity(a: Activity): string {
   if (!a.name.trim()) return 'Name is required.'
   const seen = new Set<string>()
@@ -355,7 +370,6 @@ function validateActivity(a: Activity): string {
     seen.add(f.key)
   }
   if (seen.has('occurredAt')) return 'Key "occurredAt" is reserved.'
-  // Validate preset metrics are objects
   for (const p of a.presets ?? []) {
     if (!p.name.trim()) return 'Preset name is required.'
     if (!p.metrics || typeof p.metrics !== 'object') return `Preset "${p.name}": metrics must be an object`
@@ -409,25 +423,80 @@ function fieldRow(f: FieldDef, i: number, len: number) {
 }
 
 function presetRow(p: Preset, i: number, a: Activity) {
-  const schemaKeys = a.fields.map(f => f.key)
-  const placeholder = '{\n' + schemaKeys.map(k => `  "${k}": ""`).join(',\n') + '\n}'
-  const metricsText = JSON.stringify(p.metrics ?? {}, null, 2)
   return `
-    <li class="p-3 rounded bg-ink-900 border border-butter-300/20 space-y-2">
-      <div class="flex items-center justify-between gap-3">
-        <input data-preset-name="${i}" value="${escapeAttr(p.name)}" class="flex-1 p-2 rounded bg-ink-700 border border-butter-300/20" />
-        <div class="flex gap-2">
+    <li class="p-3 rounded bg-ink-900 border border-butter-300/20 space-y-3">
+      <div class="grid grid-cols-[1fr_auto] items-center gap-2">
+        <input data-preset-name="${i}" value="${escapeAttr(p.name)}"
+               class="p-2 rounded bg-ink-700 border border-butter-300/20" />
+        <div class="flex gap-2 justify-end">
           <button type="button" data-preset-move-up="${i}" class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm" ${i===0?'disabled':''}>↑</button>
           <button type="button" data-preset-move-down="${i}" class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm" ${i===a.presets!.length-1?'disabled':''}>↓</button>
           <button type="button" data-preset-remove="${i}" class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Remove</button>
         </div>
       </div>
-      <label class="block">
-        <span class="block mb-1 text-sm opacity-90">Metrics (JSON)</span>
-        <textarea data-preset-metrics="${i}" rows="5" class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" placeholder='${escapeAttr(placeholder)}'>${escapeAttr(metricsText)}</textarea>
-      </label>
+
+      <div class="space-y-2">
+        ${a.fields.map(f => presetFieldControl(p, i, f)).join('')}
+      </div>
     </li>
   `
+}
+
+function presetFieldControl(p: Preset, idx: number, f: FieldDef): string {
+  const key = f.key
+  const val = (p.metrics ?? {})[key] as any
+  const wrap = (inner: string) => `
+    <label class="block">
+      <span class="block mb-1 text-sm opacity-90">${escapeHtml(f.label)}</span>
+      ${inner}
+    </label>`
+
+  switch (f.type) {
+    case 'enum': {
+      const v = typeof val === 'string' ? val : ''
+      return wrap(`<select data-pf data-idx="${idx}" data-key="${key}" data-type="enum"
+        class="w-full p-2 rounded bg-ink-700 border border-butter-300/20">
+        <option value="">—</option>
+        ${(f.options ?? []).map(o => `<option value="${escapeAttr(o)}" ${o===v?'selected':''}>${escapeHtml(o)}</option>`).join('')}
+      </select>`)
+    }
+    case 'number': {
+      const v = typeof val === 'number' ? String(val) : ''
+      return wrap(`<input data-pf data-idx="${idx}" data-key="${key}" data-type="number"
+        type="number" step="any"
+        value="${escapeAttr(v)}"
+        placeholder="(leave blank to omit)"
+        class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" />`)
+    }
+    case 'duration': {
+      const v = typeof val === 'number' || typeof val === 'string' ? String(val) : ''
+      return wrap(`<input data-pf data-idx="${idx}" data-key="${key}" data-type="duration"
+        value="${escapeAttr(v)}"
+        placeholder="mm:ss or hh:mm:ss (or seconds)"
+        class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" />`)
+    }
+    case 'date': {
+      const v = typeof val === 'string' ? val : ''
+      return wrap(`<input data-pf data-idx="${idx}" data-key="${key}" data-type="date"
+        type="date" value="${escapeAttr(v)}"
+        class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" />`)
+    }
+    case 'bool': {
+      const checked = val === true
+      return `
+        <label class="inline-flex items-center gap-2">
+          <input data-pf data-idx="${idx}" data-key="${key}" data-type="bool" type="checkbox" ${checked?'checked':''} />
+          <span class="text-sm">${escapeHtml(f.label)} (include if checked)</span>
+        </label>`
+    }
+    default: { // text
+      const v = typeof val === 'string' ? val : ''
+      return wrap(`<input data-pf data-idx="${idx}" data-key="${key}" data-type="text"
+        value="${escapeAttr(v)}"
+        placeholder="(leave blank to omit)"
+        class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" />`)
+    }
+  }
 }
 
 function colorOptions(current?: string) {
