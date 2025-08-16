@@ -2,16 +2,16 @@ import { db } from '../../db'
 import { nanoid } from '../../util/id'
 import { parseDuration } from '../../lib/calc'
 import { ensureSeed } from '../../seed'
-import type { Activity, FieldDef } from '../../types'
+import type { Activity, FieldDef, Preset } from '../../types'
 import { deriveTotalReps } from '../../lib/reps'
 
 export async function Add(root: HTMLElement) {
   root.innerHTML = `<div class="p-4 text-butter/80">Loading activities…</div>`
 
   await ensureSeed()
-  const activities = (await db.activities.toArray()).filter(a => !a.archived)
+  let activities: Activity[] = (await db.activities.toArray()).filter(a => !a.archived)
   if (activities.length === 0) {
-    root.innerHTML = `<div class="p-4 text-butter/80">No activities available. Reload the app.</div>`
+    root.innerHTML = `<div class="p-4 text-butter/80">No activities available. Create one first.</div>`
     return
   }
 
@@ -23,13 +23,18 @@ export async function Add(root: HTMLElement) {
           ${activities.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
         </select>
       </label>
+
+      <div id="presets" class="hidden"></div>
+
       <div id="fields" class="space-y-3"></div>
+
       <button class="w-full py-3 rounded-xl bg-amber text-ink font-medium" type="submit">Save</button>
     </form>
   `
 
   const form = root.querySelector<HTMLFormElement>('#f')!
   const fieldsDiv = root.querySelector<HTMLDivElement>('#fields')!
+  const presetsDiv = root.querySelector<HTMLDivElement>('#presets')!
 
   const getActivity = (): Activity => {
     const id = (form.elements.namedItem('activityId') as HTMLSelectElement).value
@@ -43,6 +48,31 @@ export async function Add(root: HTMLElement) {
     const custom = act.fields.map((f: FieldDef) => renderField(f)).join('')
     const date = renderField({ key: 'occurredAt', label: 'Date', type: 'date' })
     fieldsDiv.innerHTML = custom + date
+    renderPresets(act)
+  }
+
+  const renderPresets = (act: Activity) => {
+    const presets = act.presets ?? []
+    if (!presets.length) {
+      presetsDiv.classList.add('hidden')
+      presetsDiv.innerHTML = ''
+      return
+    }
+    presetsDiv.classList.remove('hidden')
+    presetsDiv.innerHTML = `
+      <div class="flex gap-2 flex-wrap">
+        ${presets.map(p => `<button type="button" data-preset="${p.id}" class="px-3 py-1.5 rounded-full bg-ink-700 border border-butter-300/30 text-sm hover:bg-ink-900">
+          ${escapeHtml(p.name)}
+        </button>`).join('')}
+      </div>
+    `
+    presetsDiv.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-preset')!
+        const p = (act.presets ?? []).find(x => x.id === id)
+        if (p) applyPresetToForm(p, act, form)
+      })
+    })
   }
 
   form.addEventListener('change', (e) => {
@@ -68,9 +98,8 @@ export async function Add(root: HTMLElement) {
       }
     }
 
-    // Derived: total_reps from reps_list or (single number × sets)
     if ('reps_list' in metrics) {
-        metrics['total_reps'] = deriveTotalReps(metrics)
+      metrics['total_reps'] = deriveTotalReps(metrics)
     }
 
     const occurredAt = String(fd.get('occurredAt') ?? new Date().toISOString().slice(0,10))
@@ -105,4 +134,51 @@ function renderField(f: FieldDef): string {
       const ph = name === 'reps_list' ? ` placeholder="e.g. 10,12,8 or 11 (uses Sets)"` : ''
       return wrap(`<input name="${name}"${ph} class="w-full p-3 rounded bg-ink-700 border border-butter-300" />`)
   }
+}
+
+function applyPresetToForm(p: Preset, act: Activity, form: HTMLFormElement) {
+  const metrics = p.metrics || {}
+  for (const f of act.fields) {
+    const val = (metrics as any)[f.key]
+    if (val === undefined) continue
+    const el = form.elements.namedItem(f.key) as HTMLInputElement | HTMLSelectElement | null
+    if (!el) continue
+
+    switch (f.type) {
+      case 'number':
+        (el as HTMLInputElement).value = String(val)
+        break
+      case 'text':
+        (el as HTMLInputElement).value = String(val)
+        break
+      case 'enum': {
+        const v = String(val)
+        const opts = f.options ?? []
+        if (opts.includes(v)) (el as HTMLSelectElement).value = v
+        break
+      }
+      case 'bool':
+        (el as HTMLInputElement).checked = val === true || val === 'true' || val === 'on'
+        break
+      case 'duration': {
+        if (typeof val === 'number') (el as HTMLInputElement).value = secondsToInput(val)
+        else (el as HTMLInputElement).value = String(val) // assume mm:ss
+        break
+      }
+      case 'date':
+        (el as HTMLInputElement).value = String(val)
+        break
+    }
+  }
+}
+
+function secondsToInput(secs: number): string {
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  const s = Math.round(secs % 60)
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!))
 }
