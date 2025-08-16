@@ -425,13 +425,21 @@ function fieldRow(f: FieldDef, i: number, len: number) {
 function presetRow(p: Preset, i: number, a: Activity) {
   return `
     <li class="p-3 rounded bg-ink-900 border border-butter-300/20 space-y-3">
-      <div class="grid grid-cols-[1fr_auto] items-center gap-2">
-        <input data-preset-name="${i}" value="${escapeAttr(p.name)}"
-               class="p-2 rounded bg-ink-700 border border-butter-300/20" />
-        <div class="flex gap-2 justify-end">
-          <button type="button" data-preset-move-up="${i}" class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm" ${i===0?'disabled':''}>↑</button>
-          <button type="button" data-preset-move-down="${i}" class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm" ${i===a.presets!.length-1?'disabled':''}>↓</button>
-          <button type="button" data-preset-remove="${i}" class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Remove</button>
+      <div class="flex items-center justify-between gap-2">
+        <input
+          data-preset-name="${i}"
+          value="${escapeAttr(p.name)}"
+          class="flex-1 min-w-0 p-2 rounded bg-ink-700 border border-butter-300/20"
+        />
+        <div class="flex items-center gap-2 shrink-0 pr-1">
+          <button type="button" data-preset-move-up="${i}"
+            class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm"
+            ${i===0?'disabled':''}>↑</button>
+          <button type="button" data-preset-move-down="${i}"
+            class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm"
+            ${i===a.presets!.length-1?'disabled':''}>↓</button>
+          <button type="button" data-preset-remove="${i}"
+            class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Remove</button>
         </div>
       </div>
 
@@ -441,6 +449,7 @@ function presetRow(p: Preset, i: number, a: Activity) {
     </li>
   `
 }
+
 
 function presetFieldControl(p: Preset, idx: number, f: FieldDef): string {
   const key = f.key
