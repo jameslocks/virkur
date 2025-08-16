@@ -1,9 +1,9 @@
 import { db } from '../../db'
-import { summarizeEntry } from '../../lib/summary'
 import type { Activity, Entry } from '../../types'
-import { weeklyTotals, runPaceSeries, consecutiveActiveDays } from '../../lib/stats'
+import { weeklyTotals, consecutiveActiveDays } from '../../lib/stats'
+import { summarizeEntry } from '../../lib/summary'
 
-let charts: any[] = [] // Chart instances (destroy on re-render)
+let charts: any[] = [] // Chart instances
 
 export async function History(root: HTMLElement) {
   const [activities, entries] = await Promise.all([
@@ -20,7 +20,7 @@ export async function History(root: HTMLElement) {
       </div>
 
       <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20">
-        <h2 class="mb-2 font-medium">Weekly totals (last 8 weeks)</h2>
+        <h2 class="mb-2 font-medium">Weekly totals (last 4 weeks)</h2>
         <canvas id="weeklyChart" height="220"></canvas>
       </div>
 
@@ -41,17 +41,14 @@ export async function History(root: HTMLElement) {
     </section>
   `
 
-  // lazy-load Chart.js to keep main bundle small
-// after lazy import:
-const { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } =
-  await import('chart.js')
-Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
-
+  // Lazy-load Chart.js (bar only)
+  const { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } = await import('chart.js')
+  Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
   charts.forEach(c => c.destroy()); charts = []
 
-  // Build a set of high-contrast colors from CSS variables
+  // Palette-derived colors
   const vars = ['--color-amber-500','--color-orange-500','--color-mint-500','--color-butter-500','--color-ink-300']
-  const rgba = (hex: string, a = 0.7) => {
+  const rgba = (hex: string, a = 0.75) => {
     const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)?.slice(1)
     if (!m) return `rgba(255,255,255,${a})`
     const [r,g,b] = m.map(x => parseInt(x, 16))
@@ -60,7 +57,7 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
   const cssVar = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#ffffff'
   const colorAt = (i: number) => cssVar(vars[i % vars.length])
 
-  // Weekly totals (stacked bars) — brighter fills + borders
+  // Weekly totals (4 weeks)
   {
     const { labels, series } = weeklyTotals(activities, entries, 4)
     const ctx = (root.querySelector('#weeklyChart') as HTMLCanvasElement).getContext('2d')!
@@ -90,7 +87,6 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
       }
     }))
   }
-
 }
 
 function escapeHtml(s: string) {
