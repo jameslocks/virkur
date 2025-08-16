@@ -1,18 +1,24 @@
 import { db } from '../../db'
 import type { Activity, FieldDef } from '../../types'
 import { nanoid } from '../../util/id'
+import { showUndoToast } from '../toast'
 
 type Mode = 'list' | 'new' | 'edit'
 
 export async function Activities(root: HTMLElement, mode: Mode = 'list', id?: string) {
   if (mode === 'list') return listView(root)
-
   if (mode === 'new') {
-    const draft: Activity = { id: nanoid(), name: '', icon: '📌', color: '#D45113', archived: false, fields: [] }
+    const draft: Activity = {
+      id: nanoid(),
+      name: '',
+      icon: '📌',
+      color: '#D45113',
+      archived: false,
+      fields: [],
+    }
     return editorView(root, draft, true)
   }
-
-  // edit
+  // edit existing
   const act = await db.activities.get(id!)
   if (!act) {
     root.innerHTML = `<div class="p-4 text-butter-300">Activity not found.</div>`
@@ -21,7 +27,8 @@ export async function Activities(root: HTMLElement, mode: Mode = 'list', id?: st
   return editorView(root, act, false)
 }
 
-/* ---------- List ---------- */
+/* ---------------- List View ---------------- */
+
 async function listView(root: HTMLElement) {
   const acts = await db.activities.orderBy('name').toArray()
 
@@ -32,22 +39,27 @@ async function listView(root: HTMLElement) {
         <a href="#activity/new" class="px-3 py-2 rounded-lg bg-amber text-ink font-medium">New</a>
       </div>
 
-      <ul class="space-y-2">
-        ${acts.map(a => `
-          <li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="font-medium truncate">${a.icon ?? ''} ${a.name}</div>
-              <div class="text-xs opacity-80">${a.fields.length} field${a.fields.length===1?'':'s'}${a.archived ? ' • archived' : ''}</div>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <a href="#activity/${a.id}" class="px-3 py-1.5 rounded bg-ink-900 border border-butter-300/20 text-butter-300 text-sm">Edit</a>
-              ${a.archived
-                ? `<button data-unarchive="${a.id}" class="px-3 py-1.5 rounded bg-mint-500 text-ink text-sm">Unarchive</button>`
-                : `<button data-archive="${a.id}" class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Archive</button>`}
-            </div>
-          </li>
-        `).join('')}
-      </ul>
+      ${acts.length === 0
+        ? `<div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 text-sm text-butter-300/80">
+             No activities yet — create one to get started.
+           </div>`
+        : `<ul class="space-y-2">
+            ${acts.map(a => `
+              <li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-medium truncate">${a.icon ?? ''} ${a.name}</div>
+                  <div class="text-xs opacity-80">${a.fields.length} field${a.fields.length===1?'':'s'}${a.archived ? ' • archived' : ''}</div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <a href="#activity/${a.id}" class="px-3 py-1.5 rounded bg-ink-900 border border-butter-300/20 text-butter-300 text-sm">Edit</a>
+                  ${a.archived
+                    ? `<button data-unarchive="${a.id}" class="px-3 py-1.5 rounded bg-mint-500 text-ink text-sm">Unarchive</button>`
+                    : `<button data-archive="${a.id}" class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Archive</button>`}
+                </div>
+              </li>
+            `).join('')}
+           </ul>`
+      }
 
       <div class="text-xs opacity-70">Archiving hides an activity from Add, but keeps existing entries.</div>
     </section>
@@ -70,9 +82,11 @@ async function listView(root: HTMLElement) {
   })
 }
 
-/* ---------- Editor ---------- */
+/* ---------------- Editor View ---------------- */
+
 function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
-  let draft: Activity = JSON.parse(JSON.stringify(initial)) // shallow clone
+  // mutable draft during editing
+  let draft: Activity = JSON.parse(JSON.stringify(initial))
 
   const render = async (err = '') => {
     const entryCount = isNew ? 0 : await db.entries.where('activityId').equals(draft.id).count()
@@ -80,7 +94,10 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
     root.innerHTML = `
       <section class="space-y-4">
         <div class="flex items-center justify-between">
-          <a href="#activities" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900">← Back</a>
+          <a href="#activities"
+             class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900">
+            ← Back
+          </a>
           <div class="text-butter-300 font-medium">${isNew ? 'New Activity' : 'Edit Activity'}</div>
           <div></div>
         </div>
@@ -108,13 +125,12 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
 
           <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-3">
             <div class="flex items-center justify-between">
-            <div class="font-medium">Fields</div>
-            <div class="flex gap-2">
+              <div class="font-medium">Fields</div>
+              <div class="flex gap-2">
                 <button type="button" id="addRepsPreset" class="px-3 py-1.5 rounded bg-mint-500 text-ink text-sm">Add Sets + Reps</button>
                 <button type="button" id="addField" class="px-3 py-1.5 rounded bg-amber text-ink text-sm">Add field</button>
+              </div>
             </div>
-            </div>
-
 
             <ul id="fields" class="space-y-2">
               ${draft.fields.map((f, i) => fieldRow(f, i, draft.fields.length)).join('')}
@@ -123,17 +139,16 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
             <div class="text-xs opacity-70">
               Keys must be unique and match <code>/^[a-z][a-z0-9_]*$/</code>.
               Use <b>enum</b> for fixed choices, <b>duration</b> for mm:ss inputs.
-            <b>Tip:</b> Use the “Add Sets + Reps” preset for automatic totals.
+              <b>Tip:</b> Use “Add Sets + Reps” for automatic totals (fields: <code>sets</code>, <code>reps_list</code>).
             </div>
           </div>
 
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <label class="inline-flex items-center gap-2">
-                <input type="checkbox" name="archived" ${draft.archived ? 'checked' : ''} />
-                <span class="text-sm">Archived</span>
-              </label>
-            </div>
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" name="archived" ${draft.archived ? 'checked' : ''} />
+              <span class="text-sm">Archived</span>
+            </label>
+
             <div class="flex gap-2">
               ${!isNew && entryCount === 0
                 ? `<button type="button" id="deleteBtn" class="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-900 text-white">Delete</button>`
@@ -146,7 +161,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       </section>
     `
 
-    // Top-level input bindings so draft stays in sync between re-renders
+    // ---------- Top-level bindings (prevent resets) ----------
     const form = root.querySelector<HTMLFormElement>('#f')!
 
     const nameEl = form.querySelector<HTMLInputElement>('input[name="name"]')!
@@ -161,16 +176,14 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
     const archEl = form.querySelector<HTMLInputElement>('input[name="archived"]')!
     archEl.addEventListener('change', () => { draft.archived = archEl.checked })
 
-    // Handlers
-    const fieldsUL = root.querySelector<HTMLUListElement>('#fields')!
-
+    // ---------- Save ----------
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
-      const fd = new FormData(form)
-      draft.name = String(fd.get('name') ?? '').trim()
-      draft.icon = String(fd.get('icon') ?? '').trim()
-      draft.color = String(fd.get('color') ?? '').trim()
-      draft.archived = fd.get('archived') === 'on'
+      // sync before validate/save (covers any unsynced values)
+      draft.name = (form.elements.namedItem('name') as HTMLInputElement).value.trim()
+      draft.icon = (form.elements.namedItem('icon') as HTMLInputElement).value
+      draft.color = (form.elements.namedItem('color') as HTMLSelectElement).value
+      draft.archived = (form.elements.namedItem('archived') as HTMLInputElement).checked
 
       const errMsg = validateActivity(draft)
       if (errMsg) return render(errMsg)
@@ -181,32 +194,33 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       location.hash = '#activities'
     })
 
-    // Add field
+    // ---------- Add field ----------
     root.querySelector<HTMLButtonElement>('#addField')!.addEventListener('click', () => {
       draft.fields.push({ key: '', label: '', type: 'text' })
       render()
     })
 
-    // Add reps preset (inserts canonical keys if missing)
+    // ---------- Add Sets + Reps preset ----------
     root.querySelector<HTMLButtonElement>('#addRepsPreset')!.addEventListener('click', () => {
-    // sync current top-level form before mutating (just in case)
-    draft.name = (form.elements.namedItem('name') as HTMLInputElement).value
-    draft.icon = (form.elements.namedItem('icon') as HTMLInputElement).value
-    draft.color = (form.elements.namedItem('color') as HTMLSelectElement).value
-    draft.archived = ((form.elements.namedItem('archived') as HTMLInputElement).checked)
+      // ensure top-level synced
+      draft.name = (form.elements.namedItem('name') as HTMLInputElement).value
+      draft.icon = (form.elements.namedItem('icon') as HTMLInputElement).value
+      draft.color = (form.elements.namedItem('color') as HTMLSelectElement).value
+      draft.archived = (form.elements.namedItem('archived') as HTMLInputElement).checked
 
-    const hasSets = draft.fields.some(f => f.key === 'sets')
-    const hasReps = draft.fields.some(f => f.key === 'reps_list')
-    if (hasSets && hasReps) return render('This activity already has sets + reps fields.')
+      const hasSets = draft.fields.some(f => f.key === 'sets')
+      const hasReps = draft.fields.some(f => f.key === 'reps_list')
+      if (hasSets && hasReps) return render('This activity already has sets + reps fields.')
 
-    const next = [...draft.fields]
-    if (!hasSets) next.push({ key: 'sets', label: 'Sets', type: 'number', required: true })
-    if (!hasReps) next.push({ key: 'reps_list', label: 'Reps per set', type: 'text', required: true })
-    draft.fields = next
-    render()
+      const next = [...draft.fields]
+      if (!hasSets) next.push({ key: 'sets', label: 'Sets', type: 'number', required: true })
+      if (!hasReps) next.push({ key: 'reps_list', label: 'Reps per set', type: 'text', required: true })
+      draft.fields = next
+      render()
     })
 
-    // Field row actions
+    // ---------- Field rows: move/remove ----------
+    const fieldsUL = root.querySelector<HTMLUListElement>('#fields')!
     fieldsUL.querySelectorAll('[data-move-up]').forEach(btn => {
       btn.addEventListener('click', () => {
         const i = Number((btn as HTMLElement).getAttribute('data-move-up'))
@@ -229,7 +243,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       })
     })
 
-    // Field inputs
+    // ---------- Field inputs: two-way binding ----------
     fieldsUL.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[data-idx]').forEach(el => {
       el.addEventListener('input', () => {
         const i = Number(el.getAttribute('data-idx'))
@@ -242,12 +256,38 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
         else if (name === 'required') f.required = (el as HTMLInputElement).checked
       })
     })
-  }
+
+    // ---------- Delete (no entries) with Undo ----------
+    const delBtn = root.querySelector<HTMLButtonElement>('#deleteBtn')
+    if (delBtn) {
+      delBtn.addEventListener('click', async () => {
+        // double-check no entries exist
+        const count = await db.entries.where('activityId').equals(draft.id).count()
+        if (count > 0) {
+          alert(`This activity has ${count} entr${count === 1 ? 'y' : 'ies'}. Archive it instead.`)
+          return
+        }
+        const name = draft.name || 'Untitled'
+        if (!confirm(`Delete "${name}"? You can Undo right after.`)) return
+
+        const snapshot: Activity = JSON.parse(JSON.stringify(draft))
+        await db.activities.delete(draft.id)
+
+        showUndoToast('Activity deleted', async () => {
+          await db.activities.add(snapshot) // restore with same id
+          location.hash = `#activity/${snapshot.id}`
+        })
+
+        location.hash = '#activities'
+      })
+    }
+  } // end render
 
   render()
 }
 
-/* ---------- Helpers ---------- */
+/* ---------------- Helpers ---------------- */
+
 function validateActivity(a: Activity): string {
   if (!a.name.trim()) return 'Name is required.'
   const seen = new Set<string>()
@@ -267,11 +307,13 @@ function fieldRow(f: FieldDef, i: number, len: number) {
       <div class="grid grid-cols-2 gap-3">
         <label class="block">
           <span class="block mb-1 text-sm opacity-90">Key</span>
-          <input name="key" data-idx="${i}" value="${escapeAttr(f.key)}" class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" placeholder="e.g. distance_km" />
+          <input name="key" data-idx="${i}" value="${escapeAttr(f.key)}"
+                 class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" placeholder="e.g. distance_km" />
         </label>
         <label class="block">
           <span class="block mb-1 text-sm opacity-90">Label</span>
-          <input name="label" data-idx="${i}" value="${escapeAttr(f.label)}" class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" placeholder="Distance (km)" />
+          <input name="label" data-idx="${i}" value="${escapeAttr(f.label)}"
+                 class="w-full p-2 rounded bg-ink-700 border border-butter-300/20" placeholder="Distance (km)" />
         </label>
         <label class="block">
           <span class="block mb-1 text-sm opacity-90">Type</span>
@@ -288,7 +330,8 @@ function fieldRow(f: FieldDef, i: number, len: number) {
       <div class="mt-3 ${f.type==='enum' ? '' : 'hidden'}">
         <label class="block">
           <span class="block mb-1 text-sm opacity-90">Options (one per line)</span>
-          <textarea name="options" data-idx="${i}" rows="3" class="w-full p-2 rounded bg-ink-700 border border-butter-300/20">${(f.options ?? []).join('\n')}</textarea>
+          <textarea name="options" data-idx="${i}" rows="3"
+                    class="w-full p-2 rounded bg-ink-700 border border-butter-300/20">${(f.options ?? []).join('\n')}</textarea>
         </label>
       </div>
 
