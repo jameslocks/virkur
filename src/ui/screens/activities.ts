@@ -51,7 +51,7 @@ async function listView(root: HTMLElement) {
                   <div class="font-medium truncate">${a.icon ?? ''} ${a.name}</div>
                   <div class="text-xs opacity-80">
                     ${a.fields.length} field${a.fields.length===1?'':'s'}
-                    • ${a.presets?.length ?? 0} preset${(a.presets?.length ?? 0)===1?'':'s'}
+                    • ${(a.presets?.length ?? 0)} preset${(a.presets?.length ?? 0)===1?'':'s'}
                     ${a.archived ? ' • archived' : ''}
                   </div>
                 </div>
@@ -94,6 +94,9 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
 
   const render = async (err = '') => {
     const entryCount = isNew ? 0 : await db.entries.where('activityId').equals(draft.id).count()
+
+    // ensure presets is always an array for this render
+    const presets = draft.presets ?? (draft.presets = [])
 
     root.innerHTML = `
       <section class="space-y-4">
@@ -157,10 +160,10 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
               </div>
             </div>
 
-            ${draft.presets.length === 0
+            ${presets.length === 0
               ? `<div class="text-sm opacity-80">No presets yet. Add one, then fill only the values you want to prefill.</div>`
               : `<ul id="presets" class="space-y-2">
-                  ${draft.presets.map((p, i) => presetRow(p, i, draft)).join('')}
+                  ${presets.map((p, i) => presetRow(p, i, presets.length, draft)).join('')}
                  </ul>`
             }
           </div>
@@ -257,7 +260,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
     const addPresetBtn = root.querySelector<HTMLButtonElement>('#addPreset')
     if (addPresetBtn) {
       addPresetBtn.addEventListener('click', () => {
-        draft.presets!.push({ id: nanoid(), name: 'New preset', metrics: {} })
+        (draft.presets ??= []).push({ id: nanoid(), name: 'New preset', metrics: {} })
         render()
       })
     }
@@ -265,25 +268,30 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
     // ---------- preset row handlers ----------
     const presUL = root.querySelector<HTMLUListElement>('#presets')
     if (presUL) {
-      // move/remove preset rows
+      // use the same local array to avoid undefined
+      const pArr = draft.presets ?? (draft.presets = [])
+
+      // move
       presUL.querySelectorAll('[data-preset-move-up]').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = Number((btn as HTMLElement).getAttribute('data-preset-move-up'))
-          if (i > 0) [draft.presets![i-1], draft.presets![i]] = [draft.presets![i], draft.presets![i-1]]
+          if (i > 0) [pArr[i-1], pArr[i]] = [pArr[i], pArr[i-1]]
           render()
         })
       })
       presUL.querySelectorAll('[data-preset-move-down]').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = Number((btn as HTMLElement).getAttribute('data-preset-move-down'))
-          if (i < draft.presets!.length - 1) [draft.presets![i+1], draft.presets![i]] = [draft.presets![i], draft.presets![i+1]]
+          if (i < pArr.length - 1) [pArr[i+1], pArr[i]] = [pArr[i], pArr[i+1]]
           render()
         })
       })
+
+      // remove
       presUL.querySelectorAll('[data-preset-remove]').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = Number((btn as HTMLElement).getAttribute('data-preset-remove'))
-          draft.presets!.splice(i, 1)
+          pArr.splice(i, 1)
           render()
         })
       })
@@ -292,42 +300,41 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       presUL.querySelectorAll<HTMLInputElement>('[data-preset-name]').forEach(input => {
         input.addEventListener('input', () => {
           const i = Number(input.getAttribute('data-preset-name'))
-          draft.presets![i].name = input.value
+          pArr[i].name = input.value
         })
       })
 
-      // metrics field inputs (all types)
+      // metrics inputs (all types)
       presUL.querySelectorAll<HTMLElement>('[data-pf]').forEach(el => {
         const i = Number(el.getAttribute('data-idx'))
         const key = el.getAttribute('data-key')!
         const type = el.getAttribute('data-type') as FieldDef['type']
 
+        // ensure object
+        pArr[i].metrics ||= {}
+
         if (type === 'bool') {
           (el as HTMLInputElement).addEventListener('change', () => {
-            if ((el as HTMLInputElement).checked) draft.presets![i].metrics[key] = true
-            else delete draft.presets![i].metrics[key]
+            if ((el as HTMLInputElement).checked) pArr[i].metrics[key] = true
+            else delete pArr[i].metrics[key]
           })
-        } else {
-          (el as HTMLInputElement | HTMLSelectElement).addEventListener('input', () => {
-            const raw = (el as HTMLInputElement).value.trim()
-            if (raw === '') { delete draft.presets![i].metrics[key]; return }
-            switch (type) {
-              case 'number': {
-                const n = Number(raw)
-                if (Number.isFinite(n)) draft.presets![i].metrics[key] = n
-                else delete draft.presets![i].metrics[key]
-                break
-              }
-              case 'enum':
-              case 'text':
-              case 'date':
-              case 'duration':
-              default:
-                draft.presets![i].metrics[key] = raw
-                break
-            }
-          })
+          return
         }
+
+        (el as HTMLInputElement | HTMLSelectElement).addEventListener('input', () => {
+          const raw = (el as HTMLInputElement).value.trim()
+          if (raw === '') { delete pArr[i].metrics[key]; return }
+          switch (type) {
+            case 'number': {
+              const n = Number(raw)
+              if (Number.isFinite(n)) pArr[i].metrics[key] = n
+              else delete pArr[i].metrics[key]
+              break
+            }
+            default:
+              pArr[i].metrics[key] = raw
+          }
+        })
       })
     }
 
@@ -422,7 +429,7 @@ function fieldRow(f: FieldDef, i: number, len: number) {
   `
 }
 
-function presetRow(p: Preset, i: number, a: Activity) {
+function presetRow(p: Preset, i: number, total: number, a: Activity) {
   return `
     <li class="p-3 rounded bg-ink-900 border border-butter-300/20 space-y-3">
       <div class="flex items-center justify-between gap-2">
@@ -437,7 +444,7 @@ function presetRow(p: Preset, i: number, a: Activity) {
             ${i===0?'disabled':''}>↑</button>
           <button type="button" data-preset-move-down="${i}"
             class="px-2 py-1 rounded bg-ink-700 border border-butter-300/20 text-sm"
-            ${i===a.presets!.length-1?'disabled':''}>↓</button>
+            ${i===total-1?'disabled':''}>↓</button>
           <button type="button" data-preset-remove="${i}"
             class="px-3 py-1.5 rounded bg-orange-700 text-white text-sm">Remove</button>
         </div>
@@ -449,7 +456,6 @@ function presetRow(p: Preset, i: number, a: Activity) {
     </li>
   `
 }
-
 
 function presetFieldControl(p: Preset, idx: number, f: FieldDef): string {
   const key = f.key
