@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   // change to '/virkur/' if you’ll deploy to GitHub Pages later
-  base: '/',
+  base: '/virkur/',
   plugins: [
     tailwindcss(),
     VitePWA({
