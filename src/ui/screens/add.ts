@@ -1,6 +1,6 @@
 import { db } from '../../db'
 import { nanoid } from '../../util/id'
-import { parseDuration, sumCsv } from '../../lib/calc'
+import { parseDuration } from '../../lib/calc'
 import { ensureSeed } from '../../seed'
 import type { Activity, FieldDef } from '../../types'
 import { deriveTotalReps } from '../../lib/reps'
