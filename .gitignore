@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+test-results/e2e-app-mounts-and-renders-UI/error-context.md
+test-results/.last-run.json
