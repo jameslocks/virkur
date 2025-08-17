@@ -1,8 +1,8 @@
 // src/ui/screens/settings.ts
 import { getSettings, saveSettings, DefaultSettings } from '../../lib/settings'
-import { exportAll, importAll } from '../../lib/storage'
+import { exportAll, importAll, summarizeBackup } from '../../lib/storage'
 import { appVersion, appCommit, buildTimeISO, appAuthors } from '../../lib/version'
-import { ensureSeed } from '../../seed' // ← uses your existing seed
+import { ensureSeed } from '../../seed'
 
 /** Exported name expected by your router/app */
 export async function Settings(root: HTMLElement) {
@@ -59,11 +59,11 @@ export async function Settings(root: HTMLElement) {
           </label>
         </div>
         <p class="text-xs opacity-80">
-          Export creates a full backup of your activities and entries. Import will merge/replace by IDs.
+          Import <b>merges</b> by ID (upsert). It never deletes your existing data.
         </p>
       </div>
 
-      <!-- Manage Activities (with Seed button) -->
+      <!-- Manage Activities -->
       <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2">
         <div class="font-medium">Manage Activities</div>
         <p class="text-sm opacity-80">
@@ -81,7 +81,7 @@ export async function Settings(root: HTMLElement) {
           </button>
         </div>
         <p class="text-xs opacity-80">
-          Tip: Use this after clearing site data or on a fresh install. It won't overwrite existing activities.
+          Tip: Use this after clearing site data or on a fresh install.
         </p>
       </div>
 
@@ -100,6 +100,22 @@ export async function Settings(root: HTMLElement) {
         </div>
       </div>
     </section>
+
+    <!-- Import confirm dialog (hidden initially) -->
+    <div id="importOverlay" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40">
+      <div role="dialog" aria-modal="true" aria-labelledby="importTitle"
+           class="w-[92vw] max-w-md rounded-2xl bg-ink-700 border border-butter-300/20 p-4 text-butter-300 shadow-xl">
+        <div id="importTitle" class="font-medium mb-2">Confirm Import</div>
+        <div id="importSummary" class="text-sm mb-3"></div>
+        <div class="text-xs opacity-80 mb-4">
+          Import <b>merges</b> by ID. It does not delete existing items. Proceed?
+        </div>
+        <div class="flex items-center justify-end gap-2">
+          <button id="importCancel" class="px-3 py-1.5 rounded-xl bg-ink-900 border border-butter-300/20 text-butter-300 text-sm">Cancel</button>
+          <button id="importProceed" class="px-3 py-1.5 rounded-xl bg-amber text-ink font-medium text-sm">Import</button>
+        </div>
+      </div>
+    </div>
   `
 
   // Handlers
@@ -120,19 +136,61 @@ export async function Settings(root: HTMLElement) {
     await exportAll()
   })
 
+  // Import flow with summary + confirm
+  const overlay = root.querySelector<HTMLDivElement>('#importOverlay')!
+  const summaryEl = overlay.querySelector<HTMLDivElement>('#importSummary')!
+  const cancelBtn = overlay.querySelector<HTMLButtonElement>('#importCancel')!
+  const proceedBtn = overlay.querySelector<HTMLButtonElement>('#importProceed')!
+  let pendingText: string | null = null
+
   root.querySelector<HTMLInputElement>('#importFile')!.addEventListener('change', async (e) => {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (!file) return
-    const text = await file.text()
-    await importAll(text)
-    alert('Imported — reloading.')
-    location.reload()
+
+    try {
+      const text = await file.text()
+      const s = summarizeBackup(text)
+      pendingText = text
+
+      summaryEl.innerHTML = `
+        <div>Activities: <b>${s.activities}</b>${s.activityNames.length ? ` — ${escapeHtml(s.activityNames.join(', '))}` : ''}</div>
+        <div>Entries: <b>${s.entries}</b></div>
+        ${s.hasSettings ? '<div>Includes settings</div>' : ''}
+      `
+      overlay.classList.remove('hidden')
+      overlay.classList.add('flex')
+      ;(overlay.querySelector('[role="dialog"]') as HTMLElement).focus()
+    } catch (err) {
+      console.error(err)
+      alert('That file does not look like a valid Virkur backup.')
+      pendingText = null
+      ;(e.target as HTMLInputElement).value = '' // reset file picker
+    }
+  })
+
+  cancelBtn.addEventListener('click', () => {
+    overlay.classList.add('hidden')
+    overlay.classList.remove('flex')
+    pendingText = null
+  })
+
+  proceedBtn.addEventListener('click', async () => {
+    if (!pendingText) return
+    proceedBtn.disabled = true
+    try {
+      await importAll(pendingText)
+      alert('Import complete — reloading.')
+      location.reload()
+    } catch (err) {
+      console.error(err)
+      alert('Import failed. See console for details.')
+      proceedBtn.disabled = false
+    }
   })
 
   // Seed defaults on demand (only adds when DB is empty)
   root.querySelector<HTMLButtonElement>('#seedBtn')!.addEventListener('click', async () => {
     await ensureSeed()
-    // Jump to Activities so the user can see the result immediately
     location.hash = '#activities'
     location.reload()
   })

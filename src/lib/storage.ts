@@ -14,12 +14,18 @@ export interface BackupFile {
   settings?: Settings
 }
 
+export interface BackupSummary {
+  activities: number
+  entries: number
+  hasSettings: boolean
+  activityNames: string[] // first few names for reassurance
+}
+
 /** Export all data to a downloadable JSON file. */
 export async function exportAll(filename?: string): Promise<void> {
   const [activities, entries, maybeSettings] = await Promise.all([
     db.activities.toArray() as Promise<Activity[]>,
     db.entries.toArray() as Promise<Entry[]>,
-    // settings table may not exist in very old DBs; guard it
     safeGetSettings(),
   ])
 
@@ -53,7 +59,34 @@ export async function exportAll(filename?: string): Promise<void> {
 }
 
 /**
- * Import backup JSON (string or object). Upserts by id.
+ * Summarize a backup file (string or object) without mutating the DB.
+ * Throws if JSON is invalid or not a Virkur-like shape.
+ */
+export function summarizeBackup(jsonOrObj: string | BackupFile): BackupSummary {
+  const data: BackupFile =
+    typeof jsonOrObj === 'string' ? (JSON.parse(jsonOrObj) as BackupFile) : jsonOrObj
+
+  if (!data || (!Array.isArray(data.activities) && !Array.isArray(data.entries))) {
+    throw new Error('Invalid backup file: missing activities/entries arrays')
+  }
+
+  const activities = (data.activities ?? [])
+  const entries = (data.entries ?? [])
+  const names = activities
+    .map(a => String((a as any).name ?? 'Untitled'))
+    .filter(Boolean)
+    .slice(0, 6)
+
+  return {
+    activities: activities.length,
+    entries: entries.length,
+    hasSettings: !!data.settings,
+    activityNames: names,
+  }
+}
+
+/**
+ * Import backup JSON (string or object). Upserts by id (merge).
  * - Does NOT delete anything that isn't present in the file.
  * - Accepts older backups lacking certain fields (best-effort sanitize).
  */
@@ -69,12 +102,10 @@ export async function importAll(jsonOrObj: string | BackupFile): Promise<void> {
   const entries = (data.entries ?? []).map(sanitizeEntry)
   const settings = data.settings ? sanitizeSettings(data.settings) : undefined
 
-  // Use a transaction for consistency. Tables may not all exist on older DBs.
   await db.transaction('rw', db.activities, db.entries, db.settings, async () => {
     if (activities.length) await db.activities.bulkPut(activities)
     if (entries.length) await db.entries.bulkPut(entries)
     if (settings) {
-      // Always persist under id 'app'
       await db.settings.put({ ...settings, id: 'app' })
     }
   })
