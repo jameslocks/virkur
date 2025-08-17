@@ -1,4 +1,3 @@
-@'
 export type FieldType = 'enum' | 'number' | 'text' | 'duration' | 'date' | 'bool'
 
 export interface FieldDef {
