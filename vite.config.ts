@@ -2,6 +2,17 @@
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+import pkg from './package.json' assert { type: 'json' }
+
+// Build metadata (resolved at build time)
+const COMMIT = (() => {
+  try { return execSync('git rev-parse --short HEAD').toString().trim() } catch { return 'dev' }
+})()
+const BUILD_TIME = new Date().toISOString()
+
+// If you want to change authors later, do it here:
+const AUTHORS = 'James Locksley'
 
 export default defineConfig({
   // IMPORTANT for GitHub Pages under /virkur/
@@ -10,7 +21,6 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Keep the PWA fully scoped to /virkur/
       manifest: {
         name: 'Virkur',
         short_name: 'Virkur',
@@ -26,10 +36,15 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Ensure SPA navigation fallback uses the repository sub-path
         navigateFallback: '/virkur/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
       },
     }),
   ],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_COMMIT__: JSON.stringify(COMMIT),
+    __BUILD_TIME__: JSON.stringify(BUILD_TIME),
+    __APP_AUTHORS__: JSON.stringify(AUTHORS),
+  },
 })

@@ -1,59 +1,110 @@
-import { exportJSON, importJSON } from '../../lib/storage'
+// src/ui/screens/settings.ts
+import { getSettings, saveSettings, DefaultSettings } from '../../lib/settings'
+import { exportAll, importAll } from '../../lib/storage'
+import { appVersion, appCommit, buildTimeISO, appAuthors } from '../../lib/version'
 
-export function Settings(root: HTMLElement) {
+export async function SettingsScreen(root: HTMLElement) {
+  const s = await getSettings()
+  const built = new Date(buildTimeISO).toLocaleString()
+
   root.innerHTML = `
     <section class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="font-medium text-butter-300 text-lg">Settings</h2>
-        <a href="#today"
-           class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900">
-          ← Back
-        </a>
-      </div>
+      <h2 class="font-medium text-butter-300 text-lg">Settings</h2>
 
-      <div class="p-4 rounded-xl bg-ink-700 border border-butter-300/20 space-y-3">
-        <div class="text-sm opacity-90">Backup & restore</div>
-        <div class="flex gap-2">
-          <button id="exportBtn" class="px-4 py-2 rounded-xl bg-amber text-ink font-medium">Export JSON</button>
-          <label class="px-4 py-2 rounded-xl bg-butter text-ink font-medium cursor-pointer">
-            Import JSON <input id="importFile" type="file" accept="application/json" class="hidden" />
+      <!-- Preferences -->
+      <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="block mb-1">Distance unit</span>
+            <select id="distanceUnit" class="w-full p-3 rounded bg-ink-700 border border-butter-300/20">
+              <option value="km" ${s.distanceUnit==='km'?'selected':''}>Kilometres</option>
+              <option value="mi" ${s.distanceUnit==='mi'?'selected':''}>Miles</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="block mb-1">Date format</span>
+            <select id="dateFormat" class="w-full p-3 rounded bg-ink-700 border border-butter-300/20">
+              <option value="DD/MM/YYYY" ${s.dateFormat==='DD/MM/YYYY'?'selected':''}>DD/MM/YYYY</option>
+              <option value="YYYY-MM-DD" ${s.dateFormat==='YYYY-MM-DD'?'selected':''}>YYYY-MM-DD</option>
+              <option value="MM/DD/YYYY" ${s.dateFormat==='MM/DD/YYYY'?'selected':''}>MM/DD/YYYY</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="block mb-1">Time format</span>
+            <select id="timeFormat" class="w-full p-3 rounded bg-ink-700 border border-butter-300/20">
+              <option value="24h" ${s.timeFormat==='24h'?'selected':''}>24-hour</option>
+              <option value="12h" ${s.timeFormat==='12h'?'selected':''}>12-hour</option>
+            </select>
           </label>
         </div>
-        <div class="text-xs opacity-70">Exports include activities & entries. Imports merge by id; duplicates are skipped.</div>
+
+        <div class="flex gap-2">
+          <button id="saveBtn" class="px-4 py-2 rounded-xl bg-amber text-ink font-medium">Save</button>
+          <button id="resetBtn" class="px-4 py-2 rounded-xl bg-ink-900 border border-butter-300/20 text-butter-300">Reset to defaults</button>
+        </div>
       </div>
 
-      <div class="p-4 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2">
-            <div class="text-sm opacity-90">Activities</div>
-            <a href="#activities" class="px-4 py-2 rounded-xl bg-amber text-ink font-medium inline-block">Manage Activities</a>
+      <!-- Data -->
+      <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-3">
+        <div class="font-medium">Data</div>
+        <div class="flex flex-wrap gap-2">
+          <button id="exportBtn" class="px-4 py-2 rounded-xl bg-ink-900 border border-butter-300/20 text-butter-300">Export JSON</button>
+          <label class="px-4 py-2 rounded-xl bg-ink-900 border border-butter-300/20 text-butter-300 cursor-pointer">
+            Import JSON
+            <input id="importFile" type="file" accept="application/json" class="hidden" />
+          </label>
         </div>
+        <p class="text-xs opacity-80">
+          Export creates a full backup of your activities and entries. Import will merge/replace by IDs.
+        </p>
+      </div>
 
-      <div class="p-4 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2 opacity-70">
-        <div class="text-sm">Units & preferences (coming soon)</div>
+      <!-- About -->
+      <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2">
+        <div class="font-medium">About</div>
+        <div class="text-sm">
+          Virkur v${appVersion} (<code>${appCommit}</code>) • Built ${built}
+        </div>
+        <div class="text-sm">
+          Author: ${escapeHtml(appAuthors)}
+        </div>
+        <div class="text-xs opacity-80">
+          © ${new Date().getFullYear()} ${escapeHtml(appAuthors)} &amp; contributors ·
+          <a class="underline" href="https://github.com/jameslocks/virkur" target="_blank" rel="noreferrer">GitHub</a> · MIT
+        </div>
       </div>
     </section>
   `
 
+  root.querySelector<HTMLButtonElement>('#saveBtn')!.addEventListener('click', async () => {
+    const distanceUnit = (root.querySelector('#distanceUnit') as HTMLSelectElement).value as 'km'|'mi'
+    const dateFormat = (root.querySelector('#dateFormat') as HTMLSelectElement).value as 'DD/MM/YYYY'|'YYYY-MM-DD'|'MM/DD/YYYY'
+    const timeFormat = (root.querySelector('#timeFormat') as HTMLSelectElement).value as '24h'|'12h'
+    await saveSettings({ distanceUnit, dateFormat, timeFormat })
+    alert('Saved preferences.')
+  })
+
+  root.querySelector<HTMLButtonElement>('#resetBtn')!.addEventListener('click', async () => {
+    await saveSettings({ ...DefaultSettings })
+    location.reload()
+  })
+
   root.querySelector<HTMLButtonElement>('#exportBtn')!.addEventListener('click', async () => {
-    const data = await exportJSON()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `virkur-export-${new Date().toISOString().slice(0,10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    await exportAll()
   })
 
   root.querySelector<HTMLInputElement>('#importFile')!.addEventListener('change', async (e) => {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (!file) return
-    try {
-      const text = await file.text()
-      await importJSON(JSON.parse(text))
-      alert('Import complete')
-      location.hash = '#history'
-    } catch (err) {
-      alert('Import failed: ' + (err as Error).message)
-    }
+    const text = await file.text()
+    await importAll(text)
+    alert('Imported — reloading.')
+    location.reload()
   })
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string))
 }
