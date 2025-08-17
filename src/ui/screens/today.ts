@@ -1,8 +1,10 @@
 import { db } from '../../db'
 import type { Activity, Entry } from '../../types'
 import { summarizeEntry } from '../../lib/summary'
+import { localYMD } from '../../lib/date'
 
-const todayISO = () => new Date().toISOString().slice(0, 10)
+
+const todayISO = () => localYMD()
 
 export async function Today(root: HTMLElement) {
   const [activities, entries] = await Promise.all([
