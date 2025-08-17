@@ -13,8 +13,11 @@ type Draft = {
 }
 
 export async function Add(root: HTMLElement) {
-  const activities = await db.activities.where('archived').equals(0 as any).toArray() as Activity[]
-  const act = activities[0]
+    // Load all, then filter in JS to include undefined/false as “active”
+    const all = await db.activities.toArray() as Activity[]
+    const activities = all.filter(a => !a.archived)
+    const act = activities[0]
+
 
   const draft: Draft = {
     activityId: act?.id ?? '',
