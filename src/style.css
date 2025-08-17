@@ -46,3 +46,20 @@
 
 /* Global preference */
 :root { color-scheme: light dark; }
+
+/* --- Accessibility helpers --- */
+@layer base {
+  /* Only interactive controls get a focus outline */
+  :where(a, button, [role="button"], input, select, textarea):focus-visible {
+    outline: 2px solid var(--color-amber-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Use on any element that needs a custom focus target */
+  .focus-ring {
+    outline: 2px solid var(--color-amber-500);
+    outline-offset: 2px;
+  }
+}
