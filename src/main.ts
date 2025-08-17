@@ -1,31 +1,19 @@
 // src/main.ts
 import './style.css'
 import { registerSW } from 'virtual:pwa-register'
-import { ensureSeed } from './seed' // path is src/seed.ts
+import { ensureSeed } from './seed' // path: src/seed.ts
 
+// Register PWA SW
 registerSW({ immediate: true })
 
+// Seed first, then import app for side-effects (app.ts mounts the UI itself)
 ;(async () => {
   try {
-    await ensureSeed() // seeds only if activities table is empty
+    await ensureSeed() // only seeds when activities table is empty
   } catch (err) {
     console.error('ensureSeed failed:', err)
   }
 
-  const root = document.getElementById('app') as HTMLElement | null
-  if (!root) {
-    console.error('Mount point #app not found in index.html')
-    return
-  }
-
-  // Dynamically import ui/app and call the first suitable bootstrap function it exports
-  const mod: any = await import('./ui/app')
-  const start = mod.default ?? mod.App ?? mod.mount ?? mod.render ?? mod.init
-  if (typeof start === 'function') {
-    start(root)
-  } else {
-    console.error(
-      "ui/app.ts should export a default function or one of: App, mount, render, init(root: HTMLElement)"
-    )
-  }
+  // Import after seeding so app sees initial data on first render
+  await import('./ui/app')
 })()
