@@ -1,3 +1,4 @@
+@'
 export type FieldType = 'enum' | 'number' | 'text' | 'duration' | 'date' | 'bool'
 
 export interface FieldDef {
@@ -11,8 +12,6 @@ export interface FieldDef {
 export interface Preset {
   id: string
   name: string
-  // Only include keys you want to prefill.
-  // Values can be string/number/bool; duration can also be provided as number (seconds).
   metrics: Record<string, string | number | boolean>
 }
 
@@ -23,7 +22,7 @@ export interface Activity {
   color?: string
   fields: FieldDef[]
   archived?: boolean
-  presets?: Preset[]          // NEW
+  presets?: Preset[]
 }
 
 export interface Entry {
@@ -32,4 +31,11 @@ export interface Entry {
   occurredAt: string   // YYYY-MM-DD
   notes?: string
   metrics: Record<string, string | number | boolean>
+}
+
+export interface Settings {
+  id: 'app'
+  distanceUnit: 'km' | 'mi'
+  dateFormat: 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'MM/DD/YYYY'
+  timeFormat: '24h' | '12h'
 }
