@@ -5,9 +5,11 @@ import { History } from './screens/history'
 import { Entry } from './screens/entry'
 import { Settings } from './screens/settings'
 import { Activities } from './screens/activities'
+import { ensureSeed } from '../seed'
 
-export function mountApp(root: HTMLElement) {
-  root.innerHTML = `
+export async function mountApp(root: HTMLElement) {
+    await ensureSeed();
+    root.innerHTML = `
     <div class="min-h-dvh bg-ink text-white max-w-md mx-auto">
       <header class="p-4 pb-2 flex items-center justify-between">
         <h1 class="text-xl font-semibold text-butter tracking-wide"><a href="#today">Virkur</a></h1>
