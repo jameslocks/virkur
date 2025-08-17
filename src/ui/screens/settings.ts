@@ -3,7 +3,8 @@ import { getSettings, saveSettings, DefaultSettings } from '../../lib/settings'
 import { exportAll, importAll } from '../../lib/storage'
 import { appVersion, appCommit, buildTimeISO, appAuthors } from '../../lib/version'
 
-export async function SettingsScreen(root: HTMLElement) {
+/** Exported name expected by your router/app */
+export async function Settings(root: HTMLElement) {
   const s = await getSettings()
   const built = new Date(buildTimeISO).toLocaleString()
 
@@ -78,6 +79,7 @@ export async function SettingsScreen(root: HTMLElement) {
     </section>
   `
 
+  // Handlers
   root.querySelector<HTMLButtonElement>('#saveBtn')!.addEventListener('click', async () => {
     const distanceUnit = (root.querySelector('#distanceUnit') as HTMLSelectElement).value as 'km'|'mi'
     const dateFormat = (root.querySelector('#dateFormat') as HTMLSelectElement).value as 'DD/MM/YYYY'|'YYYY-MM-DD'|'MM/DD/YYYY'
@@ -104,6 +106,9 @@ export async function SettingsScreen(root: HTMLElement) {
     location.reload()
   })
 }
+
+/** Keep this alias so either import style works */
+export { Settings as SettingsScreen }
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string))

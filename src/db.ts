@@ -34,6 +34,19 @@ export class VirkurDB extends Dexie {
         if (!Array.isArray(obj.presets)) obj.presets = []
       })
     )
+    // inside constructor() versions
+    this.version(4).stores({
+    activities: 'id,name,archived',
+    entries: 'id,activityId,occurredAt',
+    settings: 'id',
+    }).upgrade(async tx => {
+    const tbl = tx.table('settings')
+    const existing = await tbl.get('app')
+    if (!existing) {
+        await tbl.add({ id: 'app', distanceUnit: 'km', dateFormat: 'DD/MM/YYYY', timeFormat: '24h' })
+    }
+    })
+
   }
 }
 
