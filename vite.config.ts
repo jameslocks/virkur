@@ -11,8 +11,22 @@ const COMMIT = (() => {
 })()
 const BUILD_TIME = new Date().toISOString()
 
-// If you want to change authors later, do it here:
-const AUTHORS = 'James Locksley'
+// Derive authors from package.json: prefer "author", then "contributors"
+function formatAuthors(p: any): string {
+  const list: string[] = []
+  if (p.author) {
+    if (typeof p.author === 'string') list.push(p.author)
+    else if (p.author.name) list.push(p.author.name)
+  }
+  if (Array.isArray(p.contributors)) {
+    for (const c of p.contributors) {
+      if (typeof c === 'string') list.push(c)
+      else if (c?.name) list.push(c.name)
+    }
+  }
+  return list.filter(Boolean).join(', ') || 'Virkur contributors'
+}
+const AUTHORS = formatAuthors(pkg)
 
 export default defineConfig({
   // IMPORTANT for GitHub Pages under /virkur/

@@ -2,6 +2,8 @@
   "name": "virkur",
   "private": true,
   "version": "0.8.1",
+    "author": "James Locksley",
+  "contributors": [],
   "type": "module",
   "scripts": {
     "dev": "vite",
