@@ -6,13 +6,27 @@ import { Entry } from './screens/entry'
 import { Settings } from './screens/settings'
 import { Activities } from './screens/activities'
 import { ensureSeed } from '../seed'
+const logoUrl = import.meta.env.BASE_URL + 'logo.png'
+
 
 export async function mountApp(root: HTMLElement) {
     await ensureSeed();
     root.innerHTML = `
     <div class="min-h-dvh bg-ink text-white max-w-md mx-auto">
       <header class="p-4 pb-2 flex items-center justify-between">
-        <h1 class="text-xl font-semibold text-butter tracking-wide"><a href="#today">Virkur</a></h1>
+        <h1 class="text-xl font-semibold text-butter tracking-wide"><a href="#today">
+            <div class="flex items-center gap-2">
+                <img
+                    src="${logoUrl}"
+                    alt=""
+                    aria-hidden="true"
+                    class="h-15 w-15 rounded-md"
+                    decoding="async"
+                    fetchpriority="high"
+                />
+                <span class="text-lg font-semibold tracking-tight">Virkur</span>
+            </div>
+        </a></h1>
         <div class="flex items-center gap-2">
           <a href="#add" class="px-3 py-2 rounded-lg bg-amber text-ink font-medium">Add</a>
           <a href="#settings" class="px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900" title="Settings">⚙️</a>
