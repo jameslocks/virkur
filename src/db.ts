@@ -1,52 +1,39 @@
-import Dexie from 'dexie'
-import type { Table } from 'dexie'
-import type { Activity, Entry } from './types'
+// src/db.ts
+import Dexie, { type Table } from 'dexie'
+import type { Activity, Entry, Settings } from './types'
 
 export class VirkurDB extends Dexie {
   activities!: Table<Activity, string>
   entries!: Table<Entry, string>
+  settings!: Table<Settings, string>
 
   constructor() {
     super('virkur')
 
-    // v1: initial
-    this.version(1).stores({
+    // Bump the version number if your repo already used lower ones.
+    // This defines all stores, including the new "settings" table.
+    this.version(5).stores({
       activities: 'id,name,archived',
       entries: 'id,activityId,occurredAt',
-    })
-
-    // v2: ensure archived defaults to false
-    this.version(2).stores({
-      activities: 'id,name,archived',
-      entries: 'id,activityId,occurredAt',
-    }).upgrade(tx =>
-      tx.table('activities').toCollection().modify((obj: any) => {
-        if (typeof obj.archived !== 'boolean') obj.archived = false
-      })
-    )
-
-    // v3: ensure presets exists as []
-    this.version(3).stores({
-      activities: 'id,name,archived',
-      entries: 'id,activityId,occurredAt',
-    }).upgrade(tx =>
-      tx.table('activities').toCollection().modify((obj: any) => {
-        if (!Array.isArray(obj.presets)) obj.presets = []
-      })
-    )
-    // inside constructor() versions
-    this.version(4).stores({
-    activities: 'id,name,archived',
-    entries: 'id,activityId,occurredAt',
-    settings: 'id',
+      settings: 'id',
     }).upgrade(async tx => {
-    const tbl = tx.table('settings')
-    const existing = await tbl.get('app')
-    if (!existing) {
-        await tbl.add({ id: 'app', distanceUnit: 'km', dateFormat: 'DD/MM/YYYY', timeFormat: '24h' })
-    }
+      // Ensure a default Settings row exists without throwing if the table was new.
+      try {
+        const tbl = tx.table('settings')
+        const existing = await tbl.get('app')
+        if (!existing) {
+          const defaults: Settings = {
+            id: 'app',
+            distanceUnit: 'km',
+            dateFormat: 'DD/MM/YYYY',
+            timeFormat: '24h',
+          }
+          await tbl.add(defaults)
+        }
+      } catch {
+        // If anything goes wrong, don't block the app; settings code handles defaults.
+      }
     })
-
   }
 }
 

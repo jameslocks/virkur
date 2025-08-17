@@ -2,6 +2,7 @@
 import { getSettings, saveSettings, DefaultSettings } from '../../lib/settings'
 import { exportAll, importAll } from '../../lib/storage'
 import { appVersion, appCommit, buildTimeISO, appAuthors } from '../../lib/version'
+import { ensureSeed } from '../../seed' // ← uses your existing seed
 
 /** Exported name expected by your router/app */
 export async function Settings(root: HTMLElement) {
@@ -62,6 +63,28 @@ export async function Settings(root: HTMLElement) {
         </p>
       </div>
 
+      <!-- Manage Activities (with Seed button) -->
+      <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2">
+        <div class="font-medium">Manage Activities</div>
+        <p class="text-sm opacity-80">
+          Create, edit, archive, presets, and field definitions.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <a href="#activities"
+             class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber text-ink font-medium">
+            Open Activities
+          </a>
+          <button id="seedBtn"
+             class="px-4 py-2 rounded-xl bg-ink-900 border border-butter-300/20 text-butter-300"
+             title="Only adds defaults when your database is empty">
+            Seed defaults (if empty)
+          </button>
+        </div>
+        <p class="text-xs opacity-80">
+          Tip: Use this after clearing site data or on a fresh install. It won't overwrite existing activities.
+        </p>
+      </div>
+
       <!-- About -->
       <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-2">
         <div class="font-medium">About</div>
@@ -103,6 +126,14 @@ export async function Settings(root: HTMLElement) {
     const text = await file.text()
     await importAll(text)
     alert('Imported — reloading.')
+    location.reload()
+  })
+
+  // Seed defaults on demand (only adds when DB is empty)
+  root.querySelector<HTMLButtonElement>('#seedBtn')!.addEventListener('click', async () => {
+    await ensureSeed()
+    // Jump to Activities so the user can see the result immediately
+    location.hash = '#activities'
     location.reload()
   })
 }
