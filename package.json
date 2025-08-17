@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "typecheck": "tsc --noEmit"  },
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 4173 --strictPort",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps"
