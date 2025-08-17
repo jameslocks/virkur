@@ -145,7 +145,7 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
             </ul>
 
             <div class="text-xs opacity-70">
-              Keys must be unique and match <code>/^[a-z][a-z0-9_]*$/</code>.
+              Keys must be unique and match <code>/^[a-z][a-z0-9_]*$</code>.
               Use <b>enum</b> for fixed choices, <b>duration</b> for mm:ss inputs.
               <b>Tip:</b> Use “Add Sets + Reps” for automatic totals (fields: <code>sets</code>, <code>reps_list</code>).
             </div>
