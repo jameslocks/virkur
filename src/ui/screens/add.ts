@@ -1,184 +1,264 @@
+// src/ui/screens/add.ts
 import { db } from '../../db'
+import type { Activity, Entry, FieldDef } from '../../types'
 import { nanoid } from '../../util/id'
-import { parseDuration } from '../../lib/calc'
-import { ensureSeed } from '../../seed'
-import type { Activity, FieldDef, Preset } from '../../types'
-import { deriveTotalReps } from '../../lib/reps'
+import { showUndoToast } from '../toast'
+import { localYMD } from '../../lib/date'
+
+type Draft = {
+  activityId: string
+  occurredAt: string
+  metrics: Record<string, string | number | boolean>
+  notes?: string
+}
 
 export async function Add(root: HTMLElement) {
-  root.innerHTML = `<div class="p-4 text-butter/80">Loading activities…</div>`
+  const activities = await db.activities.where('archived').equals(0 as any).toArray() as Activity[]
+  const act = activities[0]
 
-  await ensureSeed()
-  let activities: Activity[] = (await db.activities.toArray()).filter(a => !a.archived)
-  if (activities.length === 0) {
-    root.innerHTML = `<div class="p-4 text-butter/80">No activities available. Create one first.</div>`
-    return
+  const draft: Draft = {
+    activityId: act?.id ?? '',
+    occurredAt: localYMD(),
+    metrics: {},
+    notes: '',
   }
 
-  root.innerHTML = `
-    <form id="f" class="space-y-4">
-      <label class="block">
-        <span class="block mb-1">Activity</span>
-        <select name="activityId" class="w-full p-3 rounded bg-ink-700 border border-butter-300">
-          ${activities.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
-        </select>
-      </label>
+  const render = () => {
+    const current = activities.find(a => a.id === draft.activityId)
+    const presets = current?.presets ?? []
 
-      <div id="presets" class="hidden"></div>
+    root.innerHTML = `
+      <section class="space-y-4">
+        <div class="flex items-center justify-between">
+          <a href="#today" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900">← Back</a>
+          <div class="text-butter-300 font-medium">Add Entry</div>
+          <div></div>
+        </div>
 
-      <div id="fields" class="space-y-3"></div>
+        <form id="f" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="block mb-1">Activity</span>
+              <select name="activityId" class="w-full p-3 rounded bg-ink-700 border border-butter-300/20">
+                ${activities.map(a => `<option value="${a.id}" ${a.id===draft.activityId?'selected':''}>${a.icon ?? ''} ${a.name}</option>`).join('')}
+              </select>
+            </label>
 
-      <button class="w-full py-3 rounded-xl bg-amber text-ink font-medium" type="submit">Save</button>
-    </form>
-  `
+            <label class="block">
+              <span class="block mb-1">Date</span>
+              <input name="occurredAt" type="date" value="${draft.occurredAt}"
+                     class="w-full p-3 rounded bg-ink-700 border border-butter-300/20" />
+            </label>
+          </div>
 
-  const form = root.querySelector<HTMLFormElement>('#f')!
-  const fieldsDiv = root.querySelector<HTMLDivElement>('#fields')!
-  const presetsDiv = root.querySelector<HTMLDivElement>('#presets')!
+          ${presets.length ? `
+          <label class="block">
+            <span class="block mb-1">Preset (optional)</span>
+            <select name="presetId" class="w-full p-3 rounded bg-ink-700 border border-butter-300/20">
+              <option value="">—</option>
+              ${presets.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}
+            </select>
+          </label>` : ''}
 
-  const getActivity = (): Activity => {
-    const id = (form.elements.namedItem('activityId') as HTMLSelectElement).value
-    const act = activities.find(a => a.id === id)
-    if (!act) throw new Error('Selected activity not found')
-    return act
-  }
+          <div class="p-3 rounded-xl bg-ink-700 border border-butter-300/20 space-y-3">
+            <div class="font-medium">Details</div>
+            <ul class="space-y-2">
+              ${current ? current.fields.map(f => fieldControl(f, draft.metrics)).join('') : '<li class="text-sm opacity-80">No fields.</li>'}
+            </ul>
+            ${setsRepsHelp(current)}
+          </div>
 
-  const renderFields = () => {
-    const act = getActivity()
-    const custom = act.fields.map((f: FieldDef) => renderField(f)).join('')
-    const date = renderField({ key: 'occurredAt', label: 'Date', type: 'date' })
-    fieldsDiv.innerHTML = custom + date
-    renderPresets(act)
-  }
+          <label class="block">
+            <span class="block mb-1">Notes</span>
+            <textarea name="notes" rows="3" class="w-full p-3 rounded bg-ink-700 border border-butter-300/20">${escapeHtml(String(draft.notes ?? ''))}</textarea>
+          </label>
 
-  const renderPresets = (act: Activity) => {
-    const presets = act.presets ?? []
-    if (!presets.length) {
-      presetsDiv.classList.add('hidden')
-      presetsDiv.innerHTML = ''
-      return
-    }
-    presetsDiv.classList.remove('hidden')
-    presetsDiv.innerHTML = `
-      <div class="flex gap-2 flex-wrap">
-        ${presets.map(p => `<button type="button" data-preset="${p.id}" class="px-3 py-1.5 rounded-full bg-ink-700 border border-butter-300/30 text-sm hover:bg-ink-900">
-          ${escapeHtml(p.name)}
-        </button>`).join('')}
-      </div>
+          <div class="flex items-center justify-end gap-2">
+            <button type="submit" class="px-4 py-2 rounded-xl bg-amber text-ink font-medium">Save</button>
+          </div>
+        </form>
+      </section>
     `
-    presetsDiv.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-preset')!
-        const p = (act.presets ?? []).find(x => x.id === id)
-        if (p) applyPresetToForm(p, act, form)
+
+    // Bindings
+    const form = root.querySelector<HTMLFormElement>('#f')!
+    const actSel = form.elements.namedItem('activityId') as HTMLSelectElement
+    const dateEl = form.elements.namedItem('occurredAt') as HTMLInputElement
+    actSel.addEventListener('change', () => {
+      draft.activityId = actSel.value
+      // keep date/metrics; re-render to new field set, preserving matching keys
+      render()
+    })
+    dateEl.addEventListener('change', () => { draft.occurredAt = dateEl.value })
+
+    const presetSel = form.elements.namedItem('presetId') as HTMLSelectElement | null
+    if (presetSel) {
+      presetSel.addEventListener('change', () => {
+        const id = presetSel.value
+        const p = (current?.presets ?? []).find(x => x.id === id)
+        if (!p) return
+        // prefill only keys present in the preset; do not erase others
+        for (const [k, v] of Object.entries(p.metrics ?? {})) {
+          draft.metrics[k] = v as any
+        }
+        // re-render so inputs reflect new values
+        render()
       })
+    }
+
+    // Inputs for each field
+    form.querySelectorAll<HTMLElement>('[data-key]').forEach(el => {
+      const key = el.getAttribute('data-key')!
+      const type = el.getAttribute('data-type') as FieldDef['type']
+      const bind = () => {
+        if (type === 'bool') {
+          draft.metrics[key] = (el as HTMLInputElement).checked
+          return
+        }
+        const raw = (el as HTMLInputElement).value.trim()
+        if (raw === '') { delete draft.metrics[key]; return }
+        switch (type) {
+          case 'number': {
+            const n = Number(raw)
+            if (Number.isFinite(n)) draft.metrics[key] = n
+            else delete draft.metrics[key]
+            break
+          }
+          default:
+            draft.metrics[key] = raw
+        }
+        // live total for sets/reps
+        if (key === 'sets' || key === 'reps_list') {
+          const total = deriveTotalRepsFrom(String(draft.metrics['reps_list'] ?? ''), Number(draft.metrics['sets'] ?? 0))
+          if (total > 0) (form.querySelector('#repsTotal') as HTMLElement | null)?.replaceChildren(document.createTextNode(String(total)))
+          else (form.querySelector('#repsTotal') as HTMLElement | null)?.replaceChildren(document.createTextNode('—'))
+        }
+      }
+      const evt = (type === 'bool') ? 'change' : 'input'
+      el.addEventListener(evt, bind)
+    })
+
+    // Submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const current = activities.find(a => a.id === draft.activityId)
+      if (!current) { alert('Choose an activity'); return }
+
+      // compute derived: total_reps if applicable
+      if ('sets' in draft.metrics || 'reps_list' in draft.metrics) {
+        const sets = Number(draft.metrics['sets'] ?? 0)
+        const reps = String(draft.metrics['reps_list'] ?? '')
+        const total = deriveTotalRepsFrom(reps, sets)
+        if (total > 0) draft.metrics['total_reps'] = total
+        else delete draft.metrics['total_reps']
+      }
+
+      const entry: Entry = {
+        id: nanoid(),
+        activityId: draft.activityId,
+        occurredAt: draft.occurredAt || localYMD(),
+        notes: draft.notes?.trim() ? draft.notes.trim() : undefined,
+        metrics: { ...draft.metrics },
+      }
+
+      await db.entries.add(entry)
+
+      showUndoToast('Entry saved', async () => {
+        await db.entries.delete(entry.id)
+      })
+
+      location.hash = '#today'
     })
   }
 
-  form.addEventListener('change', (e) => {
-    const t = e.target as HTMLElement | null
-    if (t?.getAttribute('name') === 'activityId') renderFields()
-  })
-
-  renderFields()
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const act = getActivity()
-    const fd = new FormData(form)
-    const metrics: Record<string, string | number | boolean> = {}
-
-    for (const f of act.fields) {
-      const raw = String(fd.get(f.key) ?? '').trim()
-      switch (f.type) {
-        case 'number':   metrics[f.key] = Number(raw); break
-        case 'duration': metrics[f.key] = raw ? parseDuration(raw) : 0; break
-        case 'bool':     metrics[f.key] = raw === 'on' || raw === 'true'; break
-        default:         metrics[f.key] = raw; break
-      }
-    }
-
-    if ('reps_list' in metrics) {
-      metrics['total_reps'] = deriveTotalReps(metrics)
-    }
-
-    const occurredAt = String(fd.get('occurredAt') ?? new Date().toISOString().slice(0,10))
-    await db.entries.add({
-      id: nanoid(),
-      activityId: act.id,
-      occurredAt,
-      metrics,
-    })
-    location.hash = '#today'
-  })
+  // first render
+  render()
 }
 
-function renderField(f: FieldDef): string {
-  const name = f.key
-  const wrap = (inner: string) => `<label class="block"><span class="block mb-1">${f.label}</span>${inner}</label>`
+/* ---------------- UI builders ---------------- */
+
+function fieldControl(f: FieldDef, values: Draft['metrics']) {
+  const key = f.key
+  const val = values[key] as any
+  const wrap = (inner: string) => `
+    <li>
+      <label class="block">
+        <span class="block mb-1 text-sm opacity-90">${escapeHtml(f.label)}</span>
+        ${inner}
+      </label>
+    </li>`
 
   switch (f.type) {
-    case 'enum':
-      return wrap(`<select name="${name}" class="w-full p-3 rounded bg-ink-700 border border-butter-300">
-        ${(f.options ?? []).map(o => `<option value="${o}">${o}</option>`).join('')}
+    case 'enum': {
+      const v = typeof val === 'string' ? val : ''
+      return wrap(`<select data-key="${key}" data-type="enum"
+        class="w-full p-3 rounded bg-ink-700 border border-butter-300/20">
+        <option value="">—</option>
+        ${(f.options ?? []).map(o => `<option value="${escapeAttr(o)}" ${o===v?'selected':''}>${escapeHtml(o)}</option>`).join('')}
       </select>`)
-    case 'number':
-      return wrap(`<input name="${name}" type="number" step="any" class="w-full p-3 rounded bg-ink-700 border border-butter-300" />`)
-    case 'duration':
-      return wrap(`<input name="${name}" placeholder="mm:ss or hh:mm:ss" class="w-full p-3 rounded bg-ink-700 border border-butter-300" />`)
-    case 'date':
-      return wrap(`<input name="${name}" type="date" value="${new Date().toISOString().slice(0,10)}" class="w-full p-3 rounded bg-ink-700 border border-butter-300" />`)
-    case 'bool':
-      return wrap(`<input name="${name}" type="checkbox" class="align-middle" />`)
-    default: // text
-      const ph = name === 'reps_list' ? ` placeholder="e.g. 10,12,8 or 11 (uses Sets)"` : ''
-      return wrap(`<input name="${name}"${ph} class="w-full p-3 rounded bg-ink-700 border border-butter-300" />`)
-  }
-}
-
-function applyPresetToForm(p: Preset, act: Activity, form: HTMLFormElement) {
-  const metrics = p.metrics || {}
-  for (const f of act.fields) {
-    const val = (metrics as any)[f.key]
-    if (val === undefined) continue
-    const el = form.elements.namedItem(f.key) as HTMLInputElement | HTMLSelectElement | null
-    if (!el) continue
-
-    switch (f.type) {
-      case 'number':
-        (el as HTMLInputElement).value = String(val)
-        break
-      case 'text':
-        (el as HTMLInputElement).value = String(val)
-        break
-      case 'enum': {
-        const v = String(val)
-        const opts = f.options ?? []
-        if (opts.includes(v)) (el as HTMLSelectElement).value = v
-        break
-      }
-      case 'bool':
-        (el as HTMLInputElement).checked = val === true || val === 'true' || val === 'on'
-        break
-      case 'duration': {
-        if (typeof val === 'number') (el as HTMLInputElement).value = secondsToInput(val)
-        else (el as HTMLInputElement).value = String(val) // assume mm:ss
-        break
-      }
-      case 'date':
-        (el as HTMLInputElement).value = String(val)
-        break
+    }
+    case 'number': {
+      const v = typeof val === 'number' ? String(val) : ''
+      return wrap(`<input data-key="${key}" data-type="number"
+        type="number" step="any" value="${escapeAttr(v)}"
+        class="w-full p-3 rounded bg-ink-700 border border-butter-300/20" />`)
+    }
+    case 'duration': {
+      const v = (typeof val === 'number' || typeof val === 'string') ? String(val) : ''
+      return wrap(`<input data-key="${key}" data-type="duration"
+        placeholder="mm:ss or hh:mm:ss (or seconds)"
+        value="${escapeAttr(v)}"
+        class="w-full p-3 rounded bg-ink-700 border border-butter-300/20" />`)
+    }
+    case 'date': {
+      const v = typeof val === 'string' ? val : ''
+      return wrap(`<input data-key="${key}" data-type="date" type="date"
+        value="${escapeAttr(v)}"
+        class="w-full p-3 rounded bg-ink-700 border border-butter-300/20" />`)
+    }
+    case 'bool': {
+      const checked = val === true
+      return `
+        <li>
+          <label class="inline-flex items-center gap-2">
+            <input data-key="${key}" data-type="bool" type="checkbox" ${checked?'checked':''} />
+            <span class="text-sm">${escapeHtml(f.label)}</span>
+          </label>
+        </li>`
+    }
+    default: {
+      const v = typeof val === 'string' ? val : ''
+      return wrap(`<input data-key="${key}" data-type="text"
+        value="${escapeAttr(v)}"
+        class="w-full p-3 rounded bg-ink-700 border border-butter-300/20" />`)
     }
   }
 }
 
-function secondsToInput(secs: number): string {
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  const s = Math.round(secs % 60)
-  return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`
+function setsRepsHelp(a?: Activity) {
+  if (!a) return ''
+  const hasSets = a.fields.some(f => f.key === 'sets')
+  const hasReps = a.fields.some(f => f.key === 'reps_list')
+  if (!(hasSets || hasReps)) return ''
+  return `
+    <div class="text-xs opacity-80">
+      Tip: Enter <code>reps per set</code> as a comma list (e.g. <code>12,12,10</code>) or a single number with
+      <code>sets</code> to auto-calc total reps. Total: <span id="repsTotal">—</span>
+    </div>`
 }
 
+/* ---------------- Helpers ---------------- */
+
+function deriveTotalRepsFrom(repsCsv: string, sets: number): number {
+  const xs = repsCsv.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0)
+  if (xs.length === 0) return 0
+  if (xs.length === 1 && sets > 0) return xs[0] * sets
+  return xs.reduce((a,b) => a + b, 0)
+}
+
+function escapeAttr(s: string) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] as string))
+}
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!))
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string))
 }
