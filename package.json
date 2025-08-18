@@ -1,8 +1,8 @@
 {
   "name": "virkur",
   "private": true,
-  "version": "0.8.1",
-    "author": "James Locksley",
+  "version": "1.0.0",
+  "author": "James Locksley",
   "contributors": [],
   "type": "module",
   "scripts": {
