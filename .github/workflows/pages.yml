@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: CI & Deploy to GitHub Pages
 
 on:
   push:
@@ -15,7 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  e2e:
+    name: E2E tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,7 +25,30 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22.12.0'   # or '20' LTS
+          node-version: '24'         # Node 24 to support import attributes (with { type: "json" })
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright (browsers + deps)
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+  build:
+    name: Build
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -39,6 +63,7 @@ jobs:
           path: ./dist
 
   deploy:
+    name: Deploy
     needs: build
     runs-on: ubuntu-latest
     environment:
