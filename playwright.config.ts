@@ -1,14 +1,22 @@
+// playwright.config.ts
 import { defineConfig } from '@playwright/test'
+
+const PORT = 4173
+const ROOT = `http://localhost:${PORT}`
+const BASE = `${ROOT}/virkur/`
 
 export default defineConfig({
   testDir: './tests',
+  timeout: 30_000,
+  retries: process.env.CI ? 2 : 0,
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:4173/virkur/',
-    headless: true,
+    baseURL: BASE,
+    trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run preview',
-    port: 4173,
+    command: `npx vite preview --port ${PORT} --strictPort`,
+    url: BASE,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
