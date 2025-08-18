@@ -1,51 +1,76 @@
+// src/ui/screens/today.ts
 import { db } from '../../db'
-import type { Activity, Entry } from '../../types'
-import { summarizeEntry } from '../../lib/summary'
+import type { Entry, Activity } from '../../types'
 import { localYMD } from '../../lib/date'
-
-
-const todayISO = () => localYMD()
+import { summarize } from '../../lib/summary'
 
 export async function Today(root: HTMLElement) {
-  const [activities, entries] = await Promise.all([
-    db.activities.toArray() as Promise<Activity[]>,
-    db.entries.orderBy('occurredAt').reverse().limit(20).toArray() as Promise<Entry[]>,
-  ])
+  const ymd = localYMD()
+  const all = await db.entries.toArray()
+  const todays = all.filter(e => (e.occurredAt || '').slice(0, 10) === ymd)
 
-  const todays = entries.filter(e => e.occurredAt === todayISO())
+  // Preload activities map for icons/names
+  const acts = await db.activities.toArray()
+  const byId = new Map(acts.map(a => [a.id, a]))
+
+  if (todays.length === 0) {
+    root.innerHTML = emptyState()
+    bindEmptyState(root)
+    return
+  }
+
+  // Sort newest first by occurredAt then id
+  todays.sort((a, b) => (b.occurredAt || '').localeCompare(a.occurredAt || '') || b.id.localeCompare(a.id))
 
   root.innerHTML = `
     <section class="space-y-4">
-      <a href="#add" class="block text-center py-3 rounded-xl bg-orange-500 hover:bg-orange-700 text-ink font-medium">
-        Add Activity
+      <h2 class="font-medium text-butter-300 text-lg">Today</h2>
+      <ul class="space-y-2">
+        ${todays.map(e => entryRow(e, byId.get(e.activityId)!)).join('')}
+      </ul>
+    </section>
+  `
+}
+
+function entryRow(e: Entry, a: Activity) {
+  const title = `${a.icon ? a.icon + ' ' : ''}${a.name}`
+  const sub = safeStr(summarize ? summarize(e, a) : '') // keep nice summary if available
+  return `
+    <li>
+      <a href="#entry/${e.id}" class="block p-3 rounded-xl bg-ink-700 border border-butter-300/20 hover:bg-ink-900">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-medium truncate">${escapeHtml(title)}</div>
+            ${sub ? `<div class="text-sm opacity-80 truncate">${escapeHtml(sub)}</div>` : ''}
+          </div>
+          <div class="text-sm opacity-80">${escapeHtml((e.occurredAt || '').slice(11, 16))}</div>
+        </div>
       </a>
+    </li>
+  `
+}
 
-      <div>
-        <h2 class="font-medium text-butter-300 mb-2">Today</h2>
-        ${todays.length ? list(activities, todays) : `<div class="text-sm text-butter-300/80">No entries yet today.</div>`}
-      </div>
-
-      <div>
-        <h2 class="font-medium text-butter-300 mb-2">Recent</h2>
-        ${entries.length ? list(activities, entries) : `<div class="text-sm text-butter-300/80">Nothing logged yet.</div>`}
+function emptyState() {
+  return `
+    <section class="space-y-4">
+      <h2 class="font-medium text-butter-300 text-lg">Today</h2>
+      <div class="p-4 rounded-2xl bg-ink-700 border border-butter-300/20 text-butter-300">
+        <div class="font-medium mb-1">No entries yet</div>
+        <p class="text-sm opacity-90 mb-3">Log a workout to see it here.</p>
+        <div class="flex gap-2">
+          <a href="#add" class="px-4 py-2 rounded-xl bg-amber text-ink font-medium">Add entry</a>
+          <a href="#activities" class="px-4 py-2 rounded-xl bg-ink-900 border border-butter-300/20 text-butter-300">Manage activities</a>
+        </div>
       </div>
     </section>
   `
 }
 
-function list(activities: Activity[], entries: Entry[]) {
-  return `<ul class="space-y-2">
-    ${entries.map(e => item(activities, e)).join('')}
-  </ul>`
+function safeStr(s: any) { return typeof s === 'string' ? s : '' }
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 }
 
-function item(activities: Activity[], e: Entry) {
-  const a = activities.find(x => x.id === e.activityId)
-  const title = `${a?.icon ?? ''} ${a?.name ?? 'Activity'} • ${e.occurredAt}`
-  return `<li class="p-3 rounded-xl bg-ink-700 border border-butter-300/20">
-    <a href="#entry/${e.id}" class="block">
-      <div class="font-medium">${title}</div>
-      <div class="text-sm opacity-90">${summarizeEntry(a, e)}</div>
-    </a>
-  </li>`
+function bindEmptyState(_root: HTMLElement) {
+  // no-op for now
 }
