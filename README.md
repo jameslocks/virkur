@@ -1,3 +1,8 @@
+[![CI](https://github.com/jameslocks/virkur/actions/workflows/pages.yml/badge.svg)](https://github.com/jameslocks/virkur/actions/workflows/pages.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+**Live app:** https://jameslocks.github.io/virkur/
+
 # Virkur
 
 _A super simple, mobile-first workout tracker (PWA)._
