@@ -21,7 +21,7 @@ export async function mountApp(root: HTMLElement) {
                     alt=""
                     aria-hidden="true"
                     width="64" height="64"
-                    class="h-7 w-7"
+                    class="h-16 w-16"
                     decoding="async"
                     fetchpriority="high"
                 />
