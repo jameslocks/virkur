@@ -3,6 +3,7 @@ import { getSettings, saveSettings, DefaultSettings } from '../../lib/settings'
 import { exportAll, importAll, summarizeBackup } from '../../lib/storage'
 import { appVersion, appCommit, buildTimeISO, appAuthors } from '../../lib/version'
 import { ensureSeed } from '../../seed'
+import { showToast } from '../toast'
 
 /** Exported name expected by your router/app */
 export async function Settings(root: HTMLElement) {
@@ -94,6 +95,11 @@ export async function Settings(root: HTMLElement) {
         <div class="text-sm">
           Author: ${escapeHtml(appAuthors)}
         </div>
+        <div class="flex items-center gap-2">
+          <button id="checkUpdateBtn" class="px-3 py-1.5 rounded-xl bg-ink-900 border border-butter-300/20 text-butter-300 text-sm">
+            Check for updates
+          </button>
+        </div>
         <div class="text-xs opacity-80">
           © ${new Date().getFullYear()} ${escapeHtml(appAuthors)} &amp; contributors ·
           <a class="underline" href="https://github.com/jameslocks/virkur" target="_blank" rel="noreferrer">GitHub</a> · MIT
@@ -118,7 +124,7 @@ export async function Settings(root: HTMLElement) {
     </div>
   `
 
-  // Handlers
+  // Handlers: preferences
   root.querySelector<HTMLButtonElement>('#saveBtn')!.addEventListener('click', async () => {
     const distanceUnit = (root.querySelector('#distanceUnit') as HTMLSelectElement).value as 'km'|'mi'
     const dateFormat = (root.querySelector('#dateFormat') as HTMLSelectElement).value as 'DD/MM/YYYY'|'YYYY-MM-DD'|'MM/DD/YYYY'
@@ -132,11 +138,12 @@ export async function Settings(root: HTMLElement) {
     location.reload()
   })
 
+  // Export
   root.querySelector<HTMLButtonElement>('#exportBtn')!.addEventListener('click', async () => {
     await exportAll()
   })
 
-  // Import flow with summary + confirm
+  // Import with summary + confirm
   const overlay = root.querySelector<HTMLDivElement>('#importOverlay')!
   const summaryEl = overlay.querySelector<HTMLDivElement>('#importSummary')!
   const cancelBtn = overlay.querySelector<HTMLButtonElement>('#importCancel')!
@@ -194,10 +201,73 @@ export async function Settings(root: HTMLElement) {
     location.hash = '#activities'
     location.reload()
   })
+
+  // Check for updates
+  const checkBtn = root.querySelector<HTMLButtonElement>('#checkUpdateBtn')!
+  checkBtn.addEventListener('click', async () => {
+    if (!('serviceWorker' in navigator)) {
+      alert('Updater not available in this browser.')
+      return
+    }
+    checkBtn.disabled = true
+    const restore = () => { checkBtn.disabled = false; checkBtn.textContent = 'Check for updates' }
+    checkBtn.textContent = 'Checking…'
+
+    try {
+      const reg = await navigator.serviceWorker.getRegistration()
+      if (!reg) {
+        showToast('No service worker registered yet — try again after first load.')
+        restore()
+        return
+      }
+
+      // If already waiting, prompt immediately
+      if (reg.waiting) {
+        showRefreshToast(reg)
+        restore()
+        return
+      }
+
+      // Trigger update check
+      await reg.update()
+
+      // Give it a moment to install; then re-check
+      setTimeout(async () => {
+        const r2 = await navigator.serviceWorker.getRegistration()
+        if (r2?.waiting) {
+          showRefreshToast(r2)
+        } else {
+          showToast('Up to date', { duration: 2200 })
+        }
+        restore()
+      }, 800)
+    } catch (e) {
+      console.error(e)
+      showToast('Update check failed', { duration: 2500 })
+      restore()
+    }
+  })
 }
 
 /** Keep this alias so either import style works */
 export { Settings as SettingsScreen }
+
+function showRefreshToast(reg: ServiceWorkerRegistration) {
+  showToast('New version available', {
+    action: {
+      label: 'Refresh',
+      onClick: () => {
+        // Ask the waiting SW to skip waiting, then reload when it activates.
+        reg.waiting?.postMessage({ type: 'SKIP_WAITING' })
+        // When the new SW activates, reload to the fresh app shell.
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          location.reload()
+        }, { once: true })
+      },
+    },
+    duration: 0,
+  })
+}
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string))
