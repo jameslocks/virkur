@@ -8,10 +8,14 @@ test('add → edit → delete → undo an entry', async ({ page }) => {
 
   // Add a Push-ups entry
   await page.goto('/virkur/#add')
-  // Pick activity
-  await page.getByLabel(/Activity/i).selectOption({ label: /Push-?ups/i })
 
-  // Fill sets/reps
+  // Pick activity by locating the option text, then selecting by its value
+  const activitySelect = page.getByLabel(/Activity/i)
+  const pushupsOption = activitySelect.locator('option', { hasText: /Push-?ups/i }).first()
+  const pushupsValue = await pushupsOption.evaluate(el => (el as HTMLOptionElement).value)
+  await activitySelect.selectOption(pushupsValue)
+
+  // Fill sets/reps and save
   await page.getByLabel(/Sets/i).fill('2')
   await page.getByLabel(/Reps per set/i).fill('11')
   await page.getByRole('button', { name: /^Save$/ }).click()
