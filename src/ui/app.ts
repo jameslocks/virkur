@@ -20,7 +20,7 @@ export async function mountApp(root: HTMLElement) {
                     src="${logoUrl}"
                     alt=""
                     aria-hidden="true"
-                    width="28" height="28"
+                    width="64" height="64"
                     class="h-7 w-7"
                     decoding="async"
                     fetchpriority="high"
