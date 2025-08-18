@@ -5,11 +5,12 @@
 
 # Virkur
 
-_A super simple, mobile-first workout tracker (PWA)._
+A super simple, mobile-first workout tracker (PWA).  
+Local-first, offline-capable, installable, and open source.
 
-- **Vanilla TypeScript + Vite 7**
+- Vanilla **TypeScript** + **Vite 7**
 - **Tailwind CSS v4** (CSS-first; tokens via `@theme` in `src/style.css`)
-- **Dexie (IndexedDB)** for offline/local-first data
+- **Dexie** (IndexedDB) for local storage
 - **Chart.js** (lazy-loaded on History)
 - **vite-plugin-pwa** for installable/offline app shell
 
@@ -17,24 +18,28 @@ _A super simple, mobile-first workout tracker (PWA)._
 
 ## ✨ Features
 
-- Add activities with dynamic fields (number, enum, text, duration, date, bool)
-- Reps logic: `sets` + `reps_list` (CSV or single number) → **automatic total**
-- Today view (today + recent), History view (weekly totals, last 4 weeks)
-- Entry detail (edit, delete with **Undo** toast)
-- Activity Manager (create/edit/archive, field editor, “Sets + Reps” preset)
-- Settings → Export/Import JSON
-- Offline-first + PWA install
+- **Add entries** quickly with activity-specific fields  
+  (number, enum, text, duration, date, bool)
+- **Sets + Reps logic**: `sets` + `reps_list` (CSV or single) → automatic total
+- **Today** view (today + latest entries)
+- **History** view: **stacked bar chart** by activity for the **last 4 weeks** + friendly “Recent” list
+- **Entry detail**: edit, delete with **Undo** toast
+- **Activity Manager**: create/edit/archive activities, field editor, “Sets + Reps” preset, optional presets
+- **Backup**: Export JSON (friendly filename) • Import with **summary + confirm** (safe **merge/upsert**, no deletions)
+- **PWA updates**: automatic update toast (**Refresh**); Settings → About → **Check for updates**
+- **Accessibility**: skip-to-content link, input zoom fix on iOS (16px controls), `aria-current` on nav, reduced-motion disables chart animation
+- **Branding**: crisp SVG header logo; PWA icons for install
 
 ---
 
-## 🧰 Requirements
+## Requirements
 
-- Node **≥ 20.19** or **≥ 22.12** (recommended: latest LTS)
-- npm (ships with Node)
+- **Node** ≥ 20.19 or ≥ 22.12 (Node 24 used in CI)
+- **npm** (ships with Node)
 
 ---
 
-## 🚀 Getting started
+## Getting started
 
 ```bash
 # 1) Install deps
@@ -48,48 +53,48 @@ npm run build
 npm run preview
 ```
 
-Open http://localhost:5173 for dev or the preview URL printed by Vite.
+Open http://localhost:5173 for dev, or use the preview URL printed by Vite.
 
 ---
 
-## 🗂 Project structure
+## Project structure
 
 ```
 src/
   style.css                # Tailwind v4 + @theme tokens
-  main.ts                  # PWA register + app mount
+  main.ts                  # PWA register + a11y hooks + app mount
   vite-env.d.ts
-
   lib/
-    calc.ts                # duration/pace parsing & formatting
-    reps.ts                # derive total reps from sets/reps_list
-    stats.ts               # weekly totals, streaks
+    date.ts                # local date helpers (no UTC gotchas)
     summary.ts             # human-readable entry summaries
-    storage.ts             # export/import helpers
+    storage.ts             # export/import helpers (with summarizeBackup)
+    a11y.ts                # skip link, aria-current, iOS input zoom fix
+    charts-a11y.ts         # prefers-reduced-motion for Chart.js
     router.ts              # hash route parsing
-
   ui/
     app.ts                 # layout (header + bottom nav)
-    toast.ts               # undo toast
+    toast.ts               # toast with Undo action
     screens/
-      today.ts             # today + recent
+      today.ts             # today + recent (friendly rendering)
       add.ts               # dynamic form per activity
-      history.ts           # charts (lazy Chart.js)
+      history.ts           # stacked 4-week chart by activity + recent
       entry.ts             # edit/delete entry
-      settings.ts          # export/import UI
-      activities.ts        # activity manager (fields, archive)
-
-  db.ts                    # Dexie schema + migrations
-  seed.ts                  # default activities
-  types.ts                 # Activity/Field/Entry types
-  util/id.ts               # id/uuid helper
+      settings.ts          # export/import + seed + about + update check
+      activities.ts        # activity manager (fields, archive, presets)
+  db.ts                    # Dexie schema + migrations (activities, entries, settings)
+  seed.ts                  # default activities + ensureSeed()
+  types.ts                 # Activity/Field/Entry/Settings types
+  util/id.ts               # id helper
 ```
 
 ---
 
-## 🎨 Theming (Tailwind v4)
+## Theming (Tailwind v4)
 
-Tailwind v4 is **CSS-first**. Tokens live in `src/style.css` inside an `@theme` block. We alias the base color to the `-500` shade so classes like `bg-ink` map cleanly.
+Tailwind v4 is CSS-first. Tokens live in `src/style.css` inside an `@theme` block.  
+We alias each base color to the `-500` shade so utilities like `bg-ink` map cleanly.
+
+Example (snippet):
 
 ```css
 @theme {
@@ -100,7 +105,7 @@ Tailwind v4 is **CSS-first**. Tokens live in `src/style.css` inside an `@theme` 
   --color-butter: var(--color-butter-500);
   --color-mint:   var(--color-mint-500);
 
-  /* ink ramp (cool, base #16151A) */
+  /* ink ramp (base #16151A) */
   --color-ink-100: #E6E7EA;
   --color-ink-300: #9EA3AC;
   --color-ink-500: #16151A;
@@ -137,45 +142,73 @@ Tailwind v4 is **CSS-first**. Tokens live in `src/style.css` inside an `@theme` 
 }
 ```
 
-Usage examples: `bg-ink`, `bg-ink-700`, `text-butter-300`, `bg-orange-700 hover:bg-orange-900`, etc.
+Usage: `bg-ink`, `bg-ink-700`, `text-butter-300`, `bg-orange-700 hover:bg-orange-900`, etc.
 
 ---
 
-## 📈 Charts
+## Charts
 
 - Chart.js is **lazy-loaded** on the History screen to keep the main bundle small.
-- Weekly totals show the last **4** ISO weeks (stacked bars).
+- Weekly chart shows the **last 4 ISO weeks**, **stacked by activity**.
 
 ---
 
-## 🧱 Architecture notes
+## Privacy
 
-- Local-first: everything works offline; PWA caches app shell.
-- Data model is simple: `activities`, `entries`. Activities can be **archived** (hidden from Add) but history is preserved.
-- Reps logic is generic: any activity with keys `sets` and `reps_list` (or `total_reps`) will summarize/aggregate.
-
----
-
-## 🌐 Deploy to GitHub Pages
-
-1. Ensure `vite.config.ts` has the correct `base` for your repo:
-   ```ts
-   export default defineConfig({
-     base: '/virkur/', // '/<REPO_NAME>/'
-     plugins: [/* tailwind, pwa */],
-   })
-   ```
-2. Push to `main`. GitHub Actions builds and deploys to Pages (workflow in `.github/workflows/pages.yml`).
-3. In **Settings → Pages**, set:
-   - **Build and deployment** → **Source: GitHub Actions** (usually auto-detected).
-
-**Custom domain?** Add your DNS and a `CNAME` at repo root if desired (optional).
+Data never leaves your device. Everything is stored locally in your browser (IndexedDB via Dexie).  
+**Export/Import** lets you back up or migrate. Import **merges** by ID (no deletions).
 
 ---
 
-## 🤝 Contributing
+## Deploy to GitHub Pages
 
-Issues and PRs welcome. Keep PRs small and focused. Please run:
+1) Ensure `vite.config.ts` has the correct base for your repo:
+
+```ts
+export default defineConfig({
+  base: '/virkur/', // '/<REPO_NAME>/'
+  plugins: [/* tailwind, pwa */],
+})
+```
+
+2) Push to `main`. GitHub Actions runs tests, builds, and deploys (see `.github/workflows/pages.yml`).  
+3) In **Settings → Pages**, select “GitHub Actions” as the source (usually automatic).
+
+---
+
+## Tests
+
+Playwright E2E covers:
+
+- Add → Edit → Delete → **Undo**
+- **Export → Import** round-trip preserves counts
+- App mounts/smoke test
+
+Run locally:
+
+```bash
+npx playwright install --with-deps
+npm run test:e2e
+```
+
+In CI, Pages deploy is **gated** on E2E success and publishes the Playwright HTML report as an artifact.
+
+---
+
+## Versioning & About
+
+Version, commit, build time, and authors are injected at build by Vite and displayed in **Settings → About**.  
+To release:
+
+```bash
+npm version patch|minor|major && git push --follow-tags
+```
+
+---
+
+## Contributing
+
+Issues and PRs welcome. Keep PRs small and focused.
 
 ```bash
 npm run typecheck && npm run build
@@ -183,6 +216,6 @@ npm run typecheck && npm run build
 
 ---
 
-## 📜 License
+## License
 
 MIT — see [LICENSE](./LICENSE).
