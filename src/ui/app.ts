@@ -6,7 +6,7 @@ import { Entry } from './screens/entry'
 import { Settings } from './screens/settings'
 import { Activities } from './screens/activities'
 import { ensureSeed } from '../seed'
-const logoUrl = import.meta.env.BASE_URL + 'logo.png'
+const logoUrl = import.meta.env.BASE_URL + 'logo_v1_svg.svg'
 
 
 export async function mountApp(root: HTMLElement) {
@@ -20,7 +20,8 @@ export async function mountApp(root: HTMLElement) {
                     src="${logoUrl}"
                     alt=""
                     aria-hidden="true"
-                    class="h-15 w-15 rounded-md"
+                    width="28" height="28"
+                    class="h-7 w-7"
                     decoding="async"
                     fetchpriority="high"
                 />
