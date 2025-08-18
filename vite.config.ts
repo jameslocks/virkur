@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
-import pkg from './package.json' assert { type: 'json' }
+import pkg from './package.json' with { type: 'json' }  // ← switched to "with"
 
 // Build metadata (resolved at build time)
 const COMMIT = (() => {
@@ -29,8 +29,7 @@ function formatAuthors(p: any): string {
 const AUTHORS = formatAuthors(pkg)
 
 export default defineConfig({
-  // IMPORTANT for GitHub Pages under /virkur/
-  base: '/virkur/',
+  base: '/virkur/', // GitHub Pages base
   plugins: [
     tailwindcss(),
     VitePWA({
