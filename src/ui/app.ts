@@ -1,16 +1,11 @@
 import { parseRoute, onRouteChange } from '../lib/router'
 import { Today } from './screens/today'
-import { Add } from './screens/add'
-import { History } from './screens/history'
-import { Entry } from './screens/entry'
-import { Settings } from './screens/settings'
-import { Activities } from './screens/activities'
 import { ensureSeed } from '../seed'
 const logoUrl = import.meta.env.BASE_URL + 'logo_v1_svg.svg'
 
 
 export async function mountApp(root: HTMLElement) {
-    await ensureSeed();
+    // Render shell immediately; seed in background
     root.innerHTML = `
     <div class="min-h-dvh bg-ink text-white max-w-md mx-auto">
       <header class="p-4 pb-2 flex items-center justify-between">
@@ -53,20 +48,49 @@ export async function mountApp(root: HTMLElement) {
     setActive(navFocus)
 
     screen.textContent = '…'
-    if (route.name === 'today') Today(screen)
-    else if (route.name === 'add') Add(screen)
-    else if (route.name === 'history') History(screen)
-    else if (route.name === 'settings') Settings(screen)
-    else if (route.name === 'activities') Activities(screen, 'list')
-    else if (route.name === 'activity') {
-      if (route.id === 'new') Activities(screen, 'new')
-      else Activities(screen, 'edit', route.id)
+    if (route.name === 'today') {
+      Today(screen)
+    } else if (route.name === 'add') {
+      void (async () => {
+        const { Add } = await import('./screens/add')
+        Add(screen)
+      })()
+    } else if (route.name === 'history') {
+      void (async () => {
+        const { History } = await import('./screens/history')
+        History(screen)
+      })()
+    } else if (route.name === 'settings') {
+      void (async () => {
+        const { Settings } = await import('./screens/settings')
+        Settings(screen)
+      })()
+    } else if (route.name === 'activities') {
+      void (async () => {
+        const { Activities } = await import('./screens/activities')
+        Activities(screen, 'list')
+      })()
+    } else if (route.name === 'activity') {
+      void (async () => {
+        const { Activities } = await import('./screens/activities')
+        if (route.id === 'new') Activities(screen, 'new')
+        else Activities(screen, 'edit', route.id)
+      })()
+    } else {
+      void (async () => {
+        const { Entry } = await import('./screens/entry')
+        Entry(screen, (route as any).id)
+      })()
     }
-    else Entry(screen, (route as any).id)
   }
 
   onRouteChange(render)
   render()
+
+  // Background seed; re-render once completed so screens pick up defaults
+  void ensureSeed().then(() => {
+    render()
+  })
 }
 
 function navLink(to: 'today'|'add'|'history', label: string, icon: string) {
