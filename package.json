@@ -10,6 +10,7 @@
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 4173 --strictPort",
+    "changelog": "node scripts/changelog.mjs",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps"
   },

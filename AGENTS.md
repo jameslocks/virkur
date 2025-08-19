@@ -39,10 +39,10 @@
 ## Versioning & Releases
 - Version bumps: when asked to "appropriately bump the version number", use `npm version patch|minor|major` (do not edit `package.json` directly).
 - Confirmation step: always ask whether this bump is a release. If confirmed, proceed with tagging and changelog.
-- Release flow (manual, Conventional Commits based):
+- Generate changelog: `npm run changelog -- --level <patch|minor|major>` to create/update `CHANGELOG.md` for the next version (or `--version X.Y.Z`).
+- Release flow (Conventional Commits based):
   - Identify previous tag: `git describe --tags --abbrev=0` (or none if first release).
-  - Generate a simple changelog section from commits since last tag (e.g., `git log <prev_tag>..HEAD --pretty=format:"* %s"`).
-  - Update `CHANGELOG.md` with a new heading `## vX.Y.Z - YYYY-MM-DD` and the commit bullets.
+  - Generate changelog: `npm run changelog -- --level <level>`.
   - Commit the changelog: `git add CHANGELOG.md && git commit -m "docs(changelog): update for vX.Y.Z"`.
   - Run the version bump (creates a commit and tag): `npm version <level> -m "chore(release): %s"`.
   - Push branch and tags: `git push && git push --tags`.
