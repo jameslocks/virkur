@@ -106,8 +106,7 @@ function renderRecent(entries: Entry[], actById: Map<string, Activity>) {
     <ul class="space-y-2">
       ${take.map(e => {
         const a = actById.get(e.activityId)
-        const hasStyle = a?.fields?.some(f => f.key === 'style' && f.type === 'enum')
-        const title = a ? `${a.icon ? a.icon + ' ' : ''}${a.name}${hasStyle ? ' • style' : ''}` : 'Unknown activity'
+        const title = a ? `${a.icon ? a.icon + ' ' : ''}${a.name}` : 'Unknown activity'
         const sub = summarizeForHistory(e, a)
         return `
           <li>
