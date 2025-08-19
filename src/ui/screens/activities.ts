@@ -256,6 +256,55 @@ function editorView(root: HTMLElement, initial: Activity, isNew: boolean) {
       })
     })
 
+    // ---------- field rows: bind inputs ----------
+    // key
+    fieldsUL.querySelectorAll<HTMLInputElement>('input[name="key"]').forEach(input => {
+      input.addEventListener('input', () => {
+        const i = Number(input.getAttribute('data-idx'))
+        draft.fields[i].key = input.value.trim()
+      })
+    })
+    // label
+    fieldsUL.querySelectorAll<HTMLInputElement>('input[name="label"]').forEach(input => {
+      input.addEventListener('input', () => {
+        const i = Number(input.getAttribute('data-idx'))
+        draft.fields[i].label = input.value
+      })
+    })
+    // type (re-render to show/hide enum options)
+    fieldsUL.querySelectorAll<HTMLSelectElement>('select[name="type"]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const i = Number(sel.getAttribute('data-idx'))
+        const nextType = sel.value as FieldDef['type']
+        draft.fields[i].type = nextType
+        if (nextType === 'enum') {
+          draft.fields[i].options ||= []
+        } else {
+          delete draft.fields[i].options
+        }
+        render()
+      })
+    })
+    // required
+    fieldsUL.querySelectorAll<HTMLInputElement>('input[name="required"]').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const i = Number(chk.getAttribute('data-idx'))
+        draft.fields[i].required = chk.checked
+      })
+    })
+    // enum options (one per line)
+    fieldsUL.querySelectorAll<HTMLTextAreaElement>('textarea[name="options"]').forEach(ta => {
+      const parseLines = (s: string) => s
+        .split('\n')
+        .map(x => x.trim())
+        .filter(x => x.length > 0)
+      ta.addEventListener('input', () => {
+        const i = Number(ta.getAttribute('data-idx'))
+        const xs = parseLines(ta.value)
+        draft.fields[i].options = xs
+      })
+    })
+
     // ---------- presets: add ----------
     const addPresetBtn = root.querySelector<HTMLButtonElement>('#addPreset')
     if (addPresetBtn) {
