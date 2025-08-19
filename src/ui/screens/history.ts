@@ -182,7 +182,7 @@ function summarizeForHistory(entry: Entry, activity?: Activity): string {
   const repsList = parseCsvNums(repsCsv)
   if (repsList.length > 1) {
     const sum = repsList.reduce((a, b) => a + b, 0)
-    bits.push(`${repsList.join('+')} (${sum})`)
+    bits.push(`${repsList.join('+')} (${sum} reps)`)
   } else if (repsList.length === 1 && Number.isFinite(sets) && sets! > 0) {
     bits.push(`${sets}×${repsList[0]} (${sets! * repsList[0]} reps)`)
   } else if (repsList.length === 1) {

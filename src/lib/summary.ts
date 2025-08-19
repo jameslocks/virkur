@@ -3,7 +3,7 @@ import type { Activity, Entry } from '../types'
 
 /**
  * Human-friendly summary for an entry. Handles common patterns:
- * - sets + reps_list → "3×11 (33 reps)" or "12+12+10 (34)"
+ * - sets + reps_list → "3×11 (33 reps)" or "12+12+10 (34 reps)"
  * - run/walk distance + duration → "5.0 km • 24:30 (4:54/km)"
  * - plank (duration only) → "2:00"
  * Falls back to compact key/values for other fields.
@@ -25,7 +25,7 @@ export function summarize(entry: Entry, activity?: Activity): string {
   if (repsList.length > 0 || Number.isFinite(sets)) {
     if (repsList.length > 1) {
       const sum = repsList.reduce((a, b) => a + b, 0)
-      bits.push(`${repsList.join('+')} (${sum})`)
+      bits.push(`${repsList.join('+')} (${sum} reps)`)
     } else if (repsList.length === 1 && Number.isFinite(sets) && sets! > 0) {
       const total = sets! * repsList[0]
       bits.push(`${sets}×${repsList[0]} (${total} reps)`)
