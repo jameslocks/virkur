@@ -33,7 +33,8 @@ export async function Today(root: HTMLElement) {
 }
 
 function entryRow(e: Entry, a: Activity) {
-  const title = `${a.icon ? a.icon + ' ' : ''}${a.name}`
+  const hasStyle = a.fields?.some(f => f.key === 'style' && f.type === 'enum')
+  const title = `${a.icon ? a.icon + ' ' : ''}${a.name}${hasStyle ? ' • style' : ''}`
   const sub = safeStr(summarize ? summarize(e, a) : '') // keep nice summary if available
   return `
     <li>
