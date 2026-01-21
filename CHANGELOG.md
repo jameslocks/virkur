@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.0 - 2026-01-21
+
+### Features
+- feat(today): add rest timer to Today screen (30s/60s/90s)
+
 ## v1.2.0 - 2025-08-19
 
 ### Features

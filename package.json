@@ -1,32 +1,32 @@
 {
-  "name": "virkur",
-  "private": true,
-  "version": "1.2.0",
-  "author": "James Locksley",
-  "contributors": [],
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "typecheck": "tsc --noEmit",
-    "preview": "vite preview --port 4173 --strictPort",
-    "changelog": "node scripts/changelog.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install --with-deps"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.1.12",
-    "tailwindcss": "^4.1.12",
-    "typescript": "~5.8.3",
-    "vite": "^7.1.2",
-    "vite-plugin-pwa": "^1.0.2",
-    "@playwright/test": "^1.46.0"
-  },
-  "dependencies": {
-    "chart.js": "^4.5.0",
-    "dexie": "^4.0.11"
-  },
-  "engines": {
-    "node": ">=20.19.0 <21 || >=22.12.0 <23"
-  }
+    "name": "virkur",
+    "private": true,
+    "version": "1.3.0",
+    "author": "James Locksley",
+    "contributors": [],
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "typecheck": "tsc --noEmit",
+        "preview": "vite preview --port 4173 --strictPort",
+        "changelog": "node scripts/changelog.mjs",
+        "test:e2e": "playwright test",
+        "test:e2e:install": "playwright install --with-deps"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.1.12",
+        "tailwindcss": "^4.1.12",
+        "typescript": "~5.8.3",
+        "vite": "^7.1.2",
+        "vite-plugin-pwa": "^1.0.2",
+        "@playwright/test": "^1.46.0"
+    },
+    "dependencies": {
+        "chart.js": "^4.5.0",
+        "dexie": "^4.0.11"
+    },
+    "engines": {
+        "node": ">=20.19.0 <21 || >=22.12.0 <23"
+    }
 }
