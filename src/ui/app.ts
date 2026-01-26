@@ -1,6 +1,7 @@
 import { parseRoute, onRouteChange } from '../lib/router'
 import { Today } from './screens/today'
 import { ensureSeed } from '../seed'
+import { RestTimer } from './rest-timer'
 const logoUrl = import.meta.env.BASE_URL + 'logo_v1_svg.svg'
 
 
@@ -28,6 +29,7 @@ export async function mountApp(root: HTMLElement) {
           <a href="#settings" class="px-3 py-2 rounded-lg bg-ink-700 border border-butter-300/20 text-butter-300 hover:bg-ink-900" title="Settings">⚙️</a>
         </div>
       </header>
+      <div id="rest-timer-mount" class="px-4"></div>
       <main id="screen" class="p-4 pt-2">…</main>
       <nav class="sticky bottom-0 bg-ink/90 backdrop-blur border-t border-butter-300/10">
         <div class="mx-auto max-w-md grid grid-cols-3">
@@ -39,6 +41,9 @@ export async function mountApp(root: HTMLElement) {
     </div>
   `
   const screen = root.querySelector<HTMLDivElement>('#screen')!
+  
+  // Mount global rest timer
+  RestTimer.instance.mount(root.querySelector<HTMLDivElement>('#rest-timer-mount'))
 
   const render = () => {
     const route = parseRoute()
