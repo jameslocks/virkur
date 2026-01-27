@@ -121,7 +121,7 @@ export class MeditationTimer {
             } else {
                 // Initial render
                 this.root.innerHTML = `
-                    <div class="flex flex-col items-center justify-center space-y-8 py-12">
+                    <div class="flex flex-col items-center justify-center space-y-4 py-6">
                         <div id="timer-display" class="text-6xl font-mono text-butter-300">${this.formatTime(this.remaining)}</div>
                         <div class="breathing-container">
                             <div class="breathing-ring"></div>
