@@ -117,7 +117,10 @@ export class MeditationTimer {
             this.root.innerHTML = `
                 <div class="flex flex-col items-center justify-center space-y-8 py-12">
                     <div class="text-6xl font-mono text-butter-300">${this.formatTime(this.remaining)}</div>
-                    <div class="text-xl text-butter-300/60 animate-pulse">Breathe...</div>
+                    <div class="breathing-container">
+                        <div class="breathing-ring"></div>
+                        <div class="breathing-circle"></div>
+                    </div>
                     <button id="cancel-meditation" class="px-8 py-3 rounded-xl bg-ink-700 border border-butter-300/20 text-butter-300 font-medium">Cancel</button>
                 </div>
             `
