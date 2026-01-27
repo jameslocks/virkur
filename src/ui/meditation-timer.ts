@@ -114,17 +114,24 @@ export class MeditationTimer {
         if (!this.root) return
 
         if (this.isRunning) {
-            this.root.innerHTML = `
-                <div class="flex flex-col items-center justify-center space-y-8 py-12">
-                    <div class="text-6xl font-mono text-butter-300">${this.formatTime(this.remaining)}</div>
-                    <div class="breathing-container">
-                        <div class="breathing-ring"></div>
-                        <div class="breathing-circle"></div>
+            const timerEl = this.root.querySelector('#timer-display')
+            if (timerEl) {
+                // Partial update
+                timerEl.textContent = this.formatTime(this.remaining)
+            } else {
+                // Initial render
+                this.root.innerHTML = `
+                    <div class="flex flex-col items-center justify-center space-y-8 py-12">
+                        <div id="timer-display" class="text-6xl font-mono text-butter-300">${this.formatTime(this.remaining)}</div>
+                        <div class="breathing-container">
+                            <div class="breathing-ring"></div>
+                            <div class="breathing-circle"></div>
+                        </div>
+                        <button id="cancel-meditation" class="px-8 py-3 rounded-xl bg-ink-700 border border-butter-300/20 text-butter-300 font-medium">Cancel</button>
                     </div>
-                    <button id="cancel-meditation" class="px-8 py-3 rounded-xl bg-ink-700 border border-butter-300/20 text-butter-300 font-medium">Cancel</button>
-                </div>
-            `
-            this.root.querySelector('#cancel-meditation')?.addEventListener('click', () => this.stop())
+                `
+                this.root.querySelector('#cancel-meditation')?.addEventListener('click', () => this.stop())
+            }
         } else if (this.remaining === 0 && this.totalSeconds > 0) {
             // Finished state
             this.root.innerHTML = `
