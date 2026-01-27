@@ -33,73 +33,78 @@ export async function mountApp(root: HTMLElement) {
       <main id="screen" class="p-4 pt-2">…</main>
       <nav class="sticky bottom-0 bg-ink/90 backdrop-blur border-t border-butter-300/10">
         <div class="mx-auto max-w-md grid grid-cols-3">
-          ${navLink('today','Today','🏠')}
-          ${navLink('add','Add','➕')}
-          ${navLink('history','History','📈')}
+          ${navLink('today', 'Today', '🏠')}
+          ${navLink('add', 'Add', '➕')}
+          ${navLink('history', 'History', '📈')}
         </div>
       </nav>
     </div>
   `
-  const screen = root.querySelector<HTMLDivElement>('#screen')!
-  
-  // Mount global rest timer
-  RestTimer.instance.mount(root.querySelector<HTMLDivElement>('#rest-timer-mount'))
+    const screen = root.querySelector<HTMLDivElement>('#screen')!
 
-  const render = () => {
-    const route = parseRoute()
-    // Keep bottom nav highlight on primary sections
-    const navFocus = route.name === 'entry' || route.name === 'settings' || route.name === 'activities' || route.name === 'activity'
-      ? 'today' : (route.name as any)
-    setActive(navFocus)
+    // Mount global rest timer
+    RestTimer.instance.mount(root.querySelector<HTMLDivElement>('#rest-timer-mount'))
 
-    screen.textContent = '…'
-    if (route.name === 'today') {
-      Today(screen)
-    } else if (route.name === 'add') {
-      void (async () => {
-        const { Add } = await import('./screens/add')
-        Add(screen)
-      })()
-    } else if (route.name === 'history') {
-      void (async () => {
-        const { History } = await import('./screens/history')
-        History(screen)
-      })()
-    } else if (route.name === 'settings') {
-      void (async () => {
-        const { Settings } = await import('./screens/settings')
-        Settings(screen)
-      })()
-    } else if (route.name === 'activities') {
-      void (async () => {
-        const { Activities } = await import('./screens/activities')
-        Activities(screen, 'list')
-      })()
-    } else if (route.name === 'activity') {
-      void (async () => {
-        const { Activities } = await import('./screens/activities')
-        if (route.id === 'new') Activities(screen, 'new')
-        else Activities(screen, 'edit', route.id)
-      })()
-    } else {
-      void (async () => {
-        const { Entry } = await import('./screens/entry')
-        Entry(screen, (route as any).id)
-      })()
+    const render = () => {
+        const route = parseRoute()
+        // Keep bottom nav highlight on primary sections
+        const navFocus = route.name === 'entry' || route.name === 'settings' || route.name === 'activities' || route.name === 'activity' || route.name === 'meditation'
+            ? 'today' : (route.name as any)
+        setActive(navFocus)
+
+        screen.textContent = '…'
+        if (route.name === 'today') {
+            Today(screen)
+        } else if (route.name === 'add') {
+            void (async () => {
+                const { Add } = await import('./screens/add')
+                Add(screen)
+            })()
+        } else if (route.name === 'history') {
+            void (async () => {
+                const { History } = await import('./screens/history')
+                History(screen)
+            })()
+        } else if (route.name === 'meditation') {
+            void (async () => {
+                const { Meditation } = await import('./screens/meditation')
+                Meditation(screen)
+            })()
+        } else if (route.name === 'settings') {
+            void (async () => {
+                const { Settings } = await import('./screens/settings')
+                Settings(screen)
+            })()
+        } else if (route.name === 'activities') {
+            void (async () => {
+                const { Activities } = await import('./screens/activities')
+                Activities(screen, 'list')
+            })()
+        } else if (route.name === 'activity') {
+            void (async () => {
+                const { Activities } = await import('./screens/activities')
+                if (route.id === 'new') Activities(screen, 'new')
+                else Activities(screen, 'edit', route.id)
+            })()
+        } else {
+            void (async () => {
+                const { Entry } = await import('./screens/entry')
+                Entry(screen, (route as any).id)
+            })()
+        }
     }
-  }
 
-  onRouteChange(render)
-  render()
-
-  // Background seed; re-render once completed so screens pick up defaults
-  void ensureSeed().then(() => {
+    onRouteChange(render)
     render()
-  })
+
+    // Background seed; re-render once completed so screens pick up defaults
+    void ensureSeed().then(() => {
+        render()
+    })
 }
 
-function navLink(to: 'today'|'add'|'history', label: string, icon: string) {
-  return `
+function navLink(to: 'today' | 'add' | 'history', label: string, icon: string) {
+    return `
   <a href="#${to}" data-to="${to}"
      class="flex flex-col items-center gap-1 py-3 text-sm opacity-75 hover:opacity-100">
     <span aria-hidden="true">${icon}</span>
@@ -107,10 +112,10 @@ function navLink(to: 'today'|'add'|'history', label: string, icon: string) {
   </a>`
 }
 
-function setActive(route: 'today'|'add'|'history') {
-  document.querySelectorAll<HTMLAnchorElement>('nav a[data-to]').forEach(a => {
-    const active = a.dataset.to === route
-    a.classList.toggle('opacity-100', active)
-    a.classList.toggle('text-amber', active)
-  })
+function setActive(route: 'today' | 'add' | 'history') {
+    document.querySelectorAll<HTMLAnchorElement>('nav a[data-to]').forEach(a => {
+        const active = a.dataset.to === route
+        a.classList.toggle('opacity-100', active)
+        a.classList.toggle('text-amber', active)
+    })
 }
