@@ -52,6 +52,13 @@ export async function mountApp(root: HTMLElement) {
             ? 'today' : (route.name as any)
         setActive(navFocus)
 
+        // Show rest timer only on specific pages
+        const showTimer = route.name === 'today' || route.name === 'add' || route.name === 'history'
+        const timerMount = root.querySelector<HTMLDivElement>('#rest-timer-mount')
+        if (timerMount) {
+            timerMount.style.display = showTimer ? 'block' : 'none'
+        }
+
         screen.textContent = '…'
         if (route.name === 'today') {
             Today(screen)
